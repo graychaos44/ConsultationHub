@@ -147,123 +147,153 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- CENTER: EDIT & FORM PANEL (상담 상세 및 작성 폼) -->
-            <Border Grid.Column="1" Style="{StaticResource CardPanel}" Margin="0,0,12,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <!-- Form Header -->
-                        <DockPanel Margin="0,0,0,12">
-                            <TextBlock Text="📝 상담 작성 및 상세 내용" Style="{StaticResource SectionHeader}" VerticalAlignment="Center" Margin="0" />
-                            <Button Content="+ 신규 작성" Command="{Binding NewRecordCommand}" Style="{StaticResource OutlineButton}" HorizontalAlignment="Right" Padding="10,4" />
-                        </DockPanel>
+            <!-- CENTER: EDIT & FORM PANEL (상담 상세 및 작성 폼 - 스크롤 없이 한 화면 최적화) -->
+            <Border Grid.Column="1" Style="{StaticResource CardPanel}" Margin="0,0,12,0" Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Row 0: Form Header -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 1: Customer Info Card (한 줄 통합: 연락처*, 고객명, 주소*) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 2: Metadata (카테고리, 상태, 우선순위, 상담일시, 재상담일) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 3: Summary & Tags (상담 요약 * + 소형 태그) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 4: Details Label -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 5: Details TextArea (남은 높이 전체 채움) -->
+                        <RowDefinition Height="*" />
+                        <!-- Row 6: Form Buttons (항상 하단 고정 노출) -->
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                        <!-- PROMINENT CUSTOMER INFO SECTION (자동 감지) -->
-                        <Border Background="#F3F4F6" CornerRadius="8" Padding="12" Margin="0,0,0,14">
-                            <StackPanel>
-                                <TextBlock Text="👤 고객 인적사항 (연락처/주소 필수, 성명 선택)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,8" />
-                                
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                    <!-- Form Header -->
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="📝 상담 작성 및 상세 내용" Style="{StaticResource SectionHeader}" VerticalAlignment="Center" Margin="0" />
+                        <Button Content="+ 신규 작성" Command="{Binding NewRecordCommand}" Style="{StaticResource OutlineButton}" HorizontalAlignment="Right" Padding="10,3" />
+                    </DockPanel>
 
-                                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="고객명 (성함 - 선택)" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                        <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" Background="White" Margin="0,2,0,0" />
+                    <!-- PROMINENT CUSTOMER INFO SECTION (한 줄 초슬림 통합) -->
+                    <Border Grid.Row="1" Background="#F3F4F6" CornerRadius="8" Padding="10,8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="👤 고객 인적사항" FontSize="12" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,4" />
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="135" /> <!-- 연락처 * -->
+                                    <ColumnDefinition Width="110" /> <!-- 고객명 (선택) -->
+                                    <ColumnDefinition Width="*" />   <!-- 주소 * -->
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                    <TextBlock Text="연락처 (전화번호) *" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2" />
+                                    <TextBox Text="{Binding EditRecord.ClientPhone, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" Padding="6,4" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="0,0,6,0">
+                                    <TextBlock Text="고객명 (선택)" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                    <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" Background="White" Padding="6,4" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="주소 (소재지/배송지) *" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2" />
+                                    <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" Padding="6,4" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- SUBTLE AUTOMATIC HINT BANNER -->
+                            <Border Visibility="{Binding HasExistingCustomerMatch, Converter={StaticResource BoolToVis}}" 
+                                    Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,6,0,0">
+                                <DockPanel>
+                                    <TextBlock Text="{Binding ExistingMatchMessage}" FontSize="11" FontWeight="SemiBold" Foreground="#1E40AF" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0">
+                                        <Button Content="기존정보 채우기" Command="{Binding FillExistingCustomerCommand}" Style="{StaticResource ModernButton}" Background="#2563EB" FontSize="11" Padding="6,2" Margin="0,0,4,0" />
+                                        <Button Content="이력 보기" Command="{Binding FilterHistoryForMatchedCustomerCommand}" Style="{StaticResource OutlineButton}" FontSize="11" Padding="6,2" />
                                     </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
 
-                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                        <TextBlock Text="연락처 (전화번호) *" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                                        <TextBox Text="{Binding EditRecord.ClientPhone, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" Margin="0,2,0,0" />
-                                    </StackPanel>
-                                </Grid>
+                    <!-- METADATA 5 COLUMNS ROW -->
+                    <Grid Grid.Row="2" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="1.15*" />
+                            <ColumnDefinition Width="1.15*" />
+                        </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="주소 (소재지/배송지/상담위치) *" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,2" />
-                                <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" />
+                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                            <TextBlock Text="카테고리" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding EditCategories}" SelectedItem="{Binding EditRecord.Category}" Padding="4,4" />
+                        </StackPanel>
 
-                                <!-- SUBTLE AUTOMATIC HINT BANNER -->
-                                <Border Visibility="{Binding HasExistingCustomerMatch, Converter={StaticResource BoolToVis}}" 
-                                        Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,6,0,0">
-                                    <DockPanel>
-                                        <TextBlock Text="{Binding ExistingMatchMessage}" FontSize="12" FontWeight="SemiBold" Foreground="#1E40AF" VerticalAlignment="Center" TextWrapping="Wrap" />
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0">
-                                            <Button Content="기존정보 채우기" Command="{Binding FillExistingCustomerCommand}" Style="{StaticResource ModernButton}" Background="#2563EB" FontSize="11" Padding="8,3" Margin="0,0,4,0" />
-                                            <Button Content="이력 보기" Command="{Binding FilterHistoryForMatchedCustomerCommand}" Style="{StaticResource OutlineButton}" FontSize="11" Padding="8,3" />
-                                        </StackPanel>
-                                    </DockPanel>
-                                </Border>
-                            </StackPanel>
-                        </Border>
+                        <StackPanel Grid.Column="1" Margin="2,0,4,0">
+                            <TextBlock Text="진행 상태" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding EditStatuses}" SelectedItem="{Binding EditRecord.Status}" Padding="4,4" />
+                        </StackPanel>
 
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="2" Margin="2,0,4,0">
+                            <TextBlock Text="우선순위" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding EditRecord.Priority}" Padding="4,4" />
+                        </StackPanel>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="카테고리" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <ComboBox ItemsSource="{Binding EditCategories}" SelectedItem="{Binding EditRecord.Category}" Padding="6,6" />
-                            </StackPanel>
+                        <StackPanel Grid.Column="3" Margin="2,0,4,0">
+                            <TextBlock Text="상담 일시" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <DatePicker SelectedDate="{Binding EditRecord.ConsultationDate}" Padding="4,3" />
+                        </StackPanel>
 
-                            <StackPanel Grid.Column="1" Margin="2,0,2,0">
-                                <TextBlock Text="진행 상태" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <ComboBox ItemsSource="{Binding EditStatuses}" SelectedItem="{Binding EditRecord.Status}" Padding="6,6" />
-                            </StackPanel>
+                        <StackPanel Grid.Column="4" Margin="2,0,0,0">
+                            <TextBlock Text="재상담 예정일" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <DatePicker SelectedDate="{Binding EditRecord.FollowUpDate}" Padding="4,3" />
+                        </StackPanel>
+                    </Grid>
 
-                            <StackPanel Grid.Column="2" Margin="4,0,0,0">
-                                <TextBlock Text="우선순위" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding EditRecord.Priority}" Padding="6,6" />
-                            </StackPanel>
-                        </Grid>
+                    <!-- SUMMARY & TAGS ROW -->
+                    <Grid Grid.Row="3" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
 
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                            <TextBlock Text="상담 요약 (한 줄 정리) *" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2" />
+                            <TextBox Text="{Binding EditRecord.Summary, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" />
+                        </StackPanel>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                <TextBlock Text="상담 일시" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <DatePicker SelectedDate="{Binding EditRecord.ConsultationDate}" Padding="6" />
-                            </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="태그 (선택)" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <TextBox Text="{Binding EditRecord.Tags, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" />
+                        </StackPanel>
+                    </Grid>
 
-                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                <TextBlock Text="재상담(팔로우업) 예정일" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <DatePicker SelectedDate="{Binding EditRecord.FollowUpDate}" Padding="6" />
-                            </StackPanel>
-                        </Grid>
+                    <!-- DETAILS LABEL -->
+                    <TextBlock Grid.Row="4" Text="상세 상담 내용" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
 
-                        <TextBlock Text="태그 (#구분자)" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2" Foreground="{StaticResource TextSecondaryBrush}" />
-                        <TextBox Text="{Binding EditRecord.Tags, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                    <!-- DETAILS TEXTBOX (남은 높이 자동 채움) -->
+                    <TextBox Grid.Row="5" 
+                             Text="{Binding EditRecord.Details, UpdateSourceTrigger=PropertyChanged}" 
+                             TextWrapping="Wrap" 
+                             AcceptsReturn="True" 
+                             VerticalScrollBarVisibility="Auto" 
+                             MinHeight="60"
+                             Margin="0,0,0,10" />
 
-                        <TextBlock Text="상담 요약 (한 줄 정리) *" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2" Foreground="{StaticResource TextSecondaryBrush}" />
-                        <TextBox Text="{Binding EditRecord.Summary, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                    <!-- FORM BUTTONS (하단 고정) -->
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="상세 상담 내용" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2" Foreground="{StaticResource TextSecondaryBrush}" />
-                        <TextBox Text="{Binding EditRecord.Details, UpdateSourceTrigger=PropertyChanged}" 
-                                 Height="180" 
-                                 TextWrapping="Wrap" 
-                                 AcceptsReturn="True" 
-                                 VerticalScrollBarVisibility="Auto" 
-                                 Margin="0,0,0,16" />
-
-                        <!-- Form Buttons -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <Button Grid.Column="0" Content="💾 상담 내용 저장하기" Command="{Binding SaveRecordCommand}" Style="{StaticResource ModernButton}" Margin="0,0,6,0" />
-                            <Button Grid.Column="1" Content="신규 작성" Command="{Binding NewRecordCommand}" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" />
-                            <Button Grid.Column="2" Content="🗑 삭제" Command="{Binding DeleteRecordCommand}" Style="{StaticResource DangerButton}" />
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
+                        <Button Grid.Column="0" Content="💾 상담 내용 저장하기" Command="{Binding SaveRecordCommand}" Style="{StaticResource ModernButton}" Padding="0,8" Margin="0,0,6,0" />
+                        <Button Grid.Column="1" Content="신규 작성" Command="{Binding NewRecordCommand}" Style="{StaticResource OutlineButton}" Padding="12,8" Margin="0,0,6,0" />
+                        <Button Grid.Column="2" Content="🗑 삭제" Command="{Binding DeleteRecordCommand}" Style="{StaticResource DangerButton}" Padding="12,8" />
+                    </Grid>
+                </Grid>
             </Border>
 
             <!-- RIGHT: CONSULTATION DATAGRID LIST -->
