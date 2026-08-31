@@ -1,0 +1,22 @@
+# Build & Binary Artifacts
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Database & Local User Files
+*.db
+*.db-journal
+*.csv
+
+# OS generated
+Thumbs.db
+[Dd]esktop.ini
