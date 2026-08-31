@@ -14,10 +14,15 @@ namespace ConsultationLedger.Views
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Activate();
-            Focus();
-            Topmost = true;
-            Topmost = false;
+            try
+            {
+                Activate();
+                Focus();
+            }
+            catch
+            {
+                // Fallback gracefully
+            }
         }
 
         private void OnCustomerInfoInputChanged(object sender, TextChangedEventArgs e)

@@ -351,10 +351,24 @@ namespace ConsultationLedger.Services
 
         private ConsultationRecord ReadRecord(SqliteDataReader reader)
         {
+            DateTime ParseDate(string colName, DateTime defaultValue)
+            {
+                int ord = reader.GetOrdinal(colName);
+                if (reader.IsDBNull(ord)) return defaultValue;
+                return DateTime.TryParse(reader.GetString(ord), out var dt) ? dt : defaultValue;
+            }
+
+            DateTime? ParseNullableDate(string colName)
+            {
+                int ord = reader.GetOrdinal(colName);
+                if (reader.IsDBNull(ord)) return null;
+                return DateTime.TryParse(reader.GetString(ord), out var dt) ? dt : null;
+            }
+
             return new ConsultationRecord
             {
                 Id = reader.GetInt64(reader.GetOrdinal("Id")),
-                ConsultationDate = DateTime.Parse(reader.GetString(reader.GetOrdinal("ConsultationDate"))),
+                ConsultationDate = ParseDate("ConsultationDate", DateTime.Now),
                 ClientName = reader.GetString(reader.GetOrdinal("ClientName")),
                 ClientPhone = reader.IsDBNull(reader.GetOrdinal("ClientPhone")) ? "" : reader.GetString(reader.GetOrdinal("ClientPhone")),
                 Address = reader.IsDBNull(reader.GetOrdinal("Address")) ? "" : reader.GetString(reader.GetOrdinal("Address")),
@@ -363,10 +377,10 @@ namespace ConsultationLedger.Services
                 Priority = reader.GetString(reader.GetOrdinal("Priority")),
                 Summary = reader.GetString(reader.GetOrdinal("Summary")),
                 Details = reader.IsDBNull(reader.GetOrdinal("Details")) ? "" : reader.GetString(reader.GetOrdinal("Details")),
-                FollowUpDate = reader.IsDBNull(reader.GetOrdinal("FollowUpDate")) ? null : DateTime.Parse(reader.GetString(reader.GetOrdinal("FollowUpDate"))),
+                FollowUpDate = ParseNullableDate("FollowUpDate"),
                 Tags = reader.IsDBNull(reader.GetOrdinal("Tags")) ? "" : reader.GetString(reader.GetOrdinal("Tags")),
-                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
-                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
+                CreatedAt = ParseDate("CreatedAt", DateTime.Now),
+                UpdatedAt = ParseDate("UpdatedAt", DateTime.Now)
             };
         }
     }
