@@ -6,6 +6,7 @@
         xmlns:viewmodels="clr-namespace:ConsultationLedger.ViewModels"
         mc:Ignorable="d"
         Title="ConsultationHub - 일일 상담 관리 장부" 
+        Icon="../app_icon.ico"
         Height="840" Width="1380"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}">
