@@ -140,7 +140,7 @@ namespace ConsultationLedger.Services
 
             using var cmd = new SqliteCommand(sql, connection);
             cmd.Parameters.AddWithValue("@ConsultationDate", record.ConsultationDate.ToString("o"));
-            cmd.Parameters.AddWithValue("@ClientName", record.ClientName);
+            cmd.Parameters.AddWithValue("@ClientName", record.ClientName ?? "");
             cmd.Parameters.AddWithValue("@ClientPhone", record.ClientPhone ?? "");
             cmd.Parameters.AddWithValue("@Address", record.Address ?? "");
             cmd.Parameters.AddWithValue("@Category", record.Category);
@@ -260,7 +260,7 @@ namespace ConsultationLedger.Services
             using var cmd = new SqliteCommand(sql, connection);
             cmd.Parameters.AddWithValue("@Id", record.Id);
             cmd.Parameters.AddWithValue("@ConsultationDate", record.ConsultationDate.ToString("o"));
-            cmd.Parameters.AddWithValue("@ClientName", record.ClientName);
+            cmd.Parameters.AddWithValue("@ClientName", record.ClientName ?? "");
             cmd.Parameters.AddWithValue("@ClientPhone", record.ClientPhone ?? "");
             cmd.Parameters.AddWithValue("@Address", record.Address ?? "");
             cmd.Parameters.AddWithValue("@Category", record.Category);
@@ -369,7 +369,7 @@ namespace ConsultationLedger.Services
             {
                 Id = reader.GetInt64(reader.GetOrdinal("Id")),
                 ConsultationDate = ParseDate("ConsultationDate", DateTime.Now),
-                ClientName = reader.GetString(reader.GetOrdinal("ClientName")),
+                ClientName = reader.IsDBNull(reader.GetOrdinal("ClientName")) ? "" : reader.GetString(reader.GetOrdinal("ClientName")),
                 ClientPhone = reader.IsDBNull(reader.GetOrdinal("ClientPhone")) ? "" : reader.GetString(reader.GetOrdinal("ClientPhone")),
                 Address = reader.IsDBNull(reader.GetOrdinal("Address")) ? "" : reader.GetString(reader.GetOrdinal("Address")),
                 Category = reader.GetString(reader.GetOrdinal("Category")),

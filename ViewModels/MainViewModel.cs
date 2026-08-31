@@ -201,7 +201,10 @@ namespace ConsultationLedger.ViewModels
             {
                 MatchedRecord = matches.First();
                 HasExistingCustomerMatch = true;
-                ExistingMatchMessage = $"💡 힌트: '{MatchedRecord.ClientName}' 님과 일치하는 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
+                string customerLabel = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName)
+                    ? $"'{MatchedRecord.ClientName}' 님"
+                    : $"연락처 '{MatchedRecord.ClientPhone}'";
+                ExistingMatchMessage = $"💡 힌트: {customerLabel}과 일치하는 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
             }
             else
             {
@@ -223,15 +226,19 @@ namespace ConsultationLedger.ViewModels
             EditRecord = null!;
             EditRecord = temp;
 
-            StatusMessage = $"'{MatchedRecord.ClientName}' 님의 기존 인적사항이 자동 입력되었습니다.";
+            string label = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'";
+            StatusMessage = $"{label}의 기존 인적사항이 자동 입력되었습니다.";
         }
 
         private void FilterHistoryForMatchedCustomer()
         {
             if (MatchedRecord == null) return;
-            SearchText = MatchedRecord.ClientName;
+            SearchText = !string.IsNullOrWhiteSpace(MatchedRecord.ClientPhone)
+                ? MatchedRecord.ClientPhone
+                : (!string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? MatchedRecord.ClientName : MatchedRecord.Address);
             PerformSearch();
-            StatusMessage = $"'{MatchedRecord.ClientName}' 님의 이전 상담 이력을 조회했습니다.";
+            string label = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'";
+            StatusMessage = $"{label}의 이전 상담 이력을 조회했습니다.";
         }
 
         public void LoadData()
@@ -304,32 +311,43 @@ namespace ConsultationLedger.ViewModels
                 UpdatedAt = record.UpdatedAt
             };
             IsEditingNew = false;
-            StatusMessage = $"상담 기록 #{record.Id} ({record.ClientName}) 수정 모드";
+            string targetTitle = !string.IsNullOrWhiteSpace(record.ClientName) ? record.ClientName : (!string.IsNullOrWhiteSpace(record.ClientPhone) ? record.ClientPhone : record.Address);
+            StatusMessage = $"상담 기록 #{record.Id} ({targetTitle}) 수정 모드";
         }
 
         private void SaveRecord()
         {
-            if (string.IsNullOrWhiteSpace(EditRecord.ClientName))
+            if (string.IsNullOrWhiteSpace(EditRecord.ClientPhone))
             {
-                MessageBox.Show("고객명을 입력해 주세요.", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("연락처(전화번호)를 입력해 주세요. (필수 항목)", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditRecord.Address))
+            {
+                MessageBox.Show("주소(소재지/배송지)를 입력해 주세요. (필수 항목)", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(EditRecord.Summary))
             {
-                MessageBox.Show("상담 요약을 입력해 주세요.", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("상담 요약을 입력해 주세요. (필수 항목)", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            string clientIdentifier = !string.IsNullOrWhiteSpace(EditRecord.ClientName)
+                ? $"'{EditRecord.ClientName}' 님"
+                : $"연락처 '{EditRecord.ClientPhone}'";
 
             if (IsEditingNew)
             {
                 _dbService.AddRecord(EditRecord);
-                StatusMessage = $"'{EditRecord.ClientName}' 님의 상담 기록이 저장되었습니다.";
+                StatusMessage = $"{clientIdentifier}의 상담 기록이 저장되었습니다.";
             }
             else
             {
                 _dbService.UpdateRecord(EditRecord);
-                StatusMessage = $"'{EditRecord.ClientName}' 님의 상담 기록이 수정되었습니다.";
+                StatusMessage = $"{clientIdentifier}의 상담 기록이 수정되었습니다.";
             }
 
             LoadData();
@@ -340,10 +358,11 @@ namespace ConsultationLedger.ViewModels
         {
             long idToDelete = EditRecord.Id > 0 ? EditRecord.Id : (SelectedRecord?.Id ?? 0);
             string clientName = EditRecord.Id > 0 ? EditRecord.ClientName : (SelectedRecord?.ClientName ?? "");
+            string displayName = !string.IsNullOrWhiteSpace(clientName) ? $"'{clientName}' 님" : "해당";
 
             if (idToDelete == 0) return;
 
-            var result = MessageBox.Show($"'{clientName}' 님의 상담 기록(ID: {idToDelete})을 정말 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show($"{displayName}의 상담 기록(ID: {idToDelete})을 정말 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result == MessageBoxResult.Yes)
             {
                 _dbService.DeleteRecord(idToDelete);

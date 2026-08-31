@@ -21,6 +21,7 @@ namespace ConsultationLedger.Models
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         // Computed Helper Properties for UI display
+        public string DisplayClientName => string.IsNullOrWhiteSpace(ClientName) ? "(미기재)" : ClientName;
         public string FormattedDate => ConsultationDate.ToString("yyyy-MM-dd HH:mm");
         public string FormattedFollowUp => FollowUpDate.HasValue ? FollowUpDate.Value.ToString("yyyy-MM-dd") : "-";
         public bool IsFollowUpOverdue => FollowUpDate.HasValue && FollowUpDate.Value.Date <= DateTime.Today && Status != "완료";

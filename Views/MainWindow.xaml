@@ -160,7 +160,7 @@
                         <!-- PROMINENT CUSTOMER INFO SECTION (자동 감지) -->
                         <Border Background="#F3F4F6" CornerRadius="8" Padding="12" Margin="0,0,0,14">
                             <StackPanel>
-                                <TextBlock Text="👤 핵심 고객 정보 (필수/중요)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,8" />
+                                <TextBlock Text="👤 고객 인적사항 (연락처/주소 필수, 성명 선택)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,8" />
                                 
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -169,18 +169,18 @@
                                     </Grid.ColumnDefinitions>
 
                                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="고객명 (성함) *" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                                        <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" Margin="0,2,0,0" />
+                                        <TextBlock Text="고객명 (성함 - 선택)" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" Background="White" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
                                         <TextBlock Text="연락처 (전화번호) *" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                                        <TextBox Text="{Binding EditRecord.ClientPhone, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" Background="White" Margin="0,2,0,0" />
+                                        <TextBox Text="{Binding EditRecord.ClientPhone, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </Grid>
 
-                                <TextBlock Text="주소 (소재지/배송지/상담위치)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,2" />
-                                <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" Background="White" />
+                                <TextBlock Text="주소 (소재지/배송지/상담위치) *" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,2" />
+                                <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnCustomerInfoInputChanged" FontWeight="Bold" Background="White" />
 
                                 <!-- SUBTLE AUTOMATIC HINT BANNER -->
                                 <Border Visibility="{Binding HasExistingCustomerMatch, Converter={StaticResource BoolToVis}}" 
@@ -297,9 +297,9 @@
                               RowHeight="38">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="No" Binding="{Binding RowIndex}" Width="35" />
-                            <DataGridTextColumn Header="고객명" Binding="{Binding ClientName}" Width="70" FontWeight="Bold" />
-                            <DataGridTextColumn Header="연락처" Binding="{Binding ClientPhone}" Width="95" />
-                            <DataGridTextColumn Header="주소" Binding="{Binding Address}" Width="120" />
+                            <DataGridTextColumn Header="고객명" Binding="{Binding DisplayClientName}" Width="75" FontWeight="Bold" />
+                            <DataGridTextColumn Header="연락처" Binding="{Binding ClientPhone}" Width="105" />
+                            <DataGridTextColumn Header="주소" Binding="{Binding Address}" Width="130" />
                             <DataGridTextColumn Header="상담일시" Binding="{Binding FormattedDate}" Width="100" />
                             <DataGridTextColumn Header="상태" Binding="{Binding Status}" Width="55" />
                             <DataGridTextColumn Header="상담 요약" Binding="{Binding Summary}" Width="*" />
