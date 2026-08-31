@@ -9,6 +9,15 @@ namespace ConsultationLedger.Views
         public MainWindow()
         {
             InitializeComponent();
+            Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            Activate();
+            Focus();
+            Topmost = true;
+            Topmost = false;
         }
 
         private void OnCustomerInfoInputChanged(object sender, TextChangedEventArgs e)
