@@ -152,6 +152,25 @@ namespace ConsultationLedger.ViewModels
             set => SetProperty(ref _matchedRecord, value);
         }
 
+        // Font Size Settings for Writing Area (작성 영역 글자 크기)
+        private double _writingFontSize = 14.0;
+        public double WritingFontSize
+        {
+            get => _writingFontSize;
+            set
+            {
+                if (value >= 10 && value <= 28 && SetProperty(ref _writingFontSize, value))
+                {
+                    SaveWritingFontSize();
+                }
+            }
+        }
+
+        public ObservableCollection<double> AvailableFontSizes { get; } = new()
+        {
+            10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28
+        };
+
         // Collections for Comboboxes
         public ObservableCollection<string> Categories { get; } = new() { "전체", "일반상담", "법률/행정", "상품문의", "서비스지원", "기타" };
         public ObservableCollection<string> EditCategories { get; } = new() { "일반상담", "법률/행정", "상품문의", "서비스지원", "기타" };
@@ -169,6 +188,9 @@ namespace ConsultationLedger.ViewModels
         public ICommand CheckDuplicatesCommand { get; }
         public ICommand FillExistingCustomerCommand { get; }
         public ICommand FilterHistoryForMatchedCustomerCommand { get; }
+        public ICommand IncreaseFontSizeCommand { get; }
+        public ICommand DecreaseFontSizeCommand { get; }
+        public ICommand ResetFontSizeCommand { get; }
 
         public MainViewModel()
         {
@@ -183,7 +205,11 @@ namespace ConsultationLedger.ViewModels
             CheckDuplicatesCommand = new RelayCommand(CheckDuplicates);
             FillExistingCustomerCommand = new RelayCommand(FillExistingCustomer);
             FilterHistoryForMatchedCustomerCommand = new RelayCommand(FilterHistoryForMatchedCustomer);
+            IncreaseFontSizeCommand = new RelayCommand(IncreaseFontSize);
+            DecreaseFontSizeCommand = new RelayCommand(DecreaseFontSize);
+            ResetFontSizeCommand = new RelayCommand(ResetFontSize);
 
+            LoadWritingFontSize();
             PrepareNewRecord();
             LoadData();
         }
@@ -387,6 +413,76 @@ namespace ConsultationLedger.ViewModels
             catch (Exception ex)
             {
                 MessageBox.Show($"내보내기 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void IncreaseFontSize()
+        {
+            if (WritingFontSize < 28)
+            {
+                WritingFontSize = Math.Min(28, WritingFontSize + 1);
+                StatusMessage = $"작성 글자 크기: {WritingFontSize}pt";
+            }
+        }
+
+        private void DecreaseFontSize()
+        {
+            if (WritingFontSize > 10)
+            {
+                WritingFontSize = Math.Max(10, WritingFontSize - 1);
+                StatusMessage = $"작성 글자 크기: {WritingFontSize}pt";
+            }
+        }
+
+        private void ResetFontSize()
+        {
+            WritingFontSize = 14;
+            StatusMessage = "작성 글자 크기가 기본값(14pt)으로 재설정되었습니다.";
+        }
+
+        private static string GetSettingsFilePath()
+        {
+            string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger");
+            Directory.CreateDirectory(appDataPath);
+            return Path.Combine(appDataPath, "settings.json");
+        }
+
+        private void LoadWritingFontSize()
+        {
+            try
+            {
+                string path = GetSettingsFilePath();
+                if (File.Exists(path))
+                {
+                    string json = File.ReadAllText(path);
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("WritingFontSize", out var prop) && prop.TryGetDouble(out var size))
+                    {
+                        if (size >= 10 && size <= 28)
+                        {
+                            _writingFontSize = size;
+                            OnPropertyChanged(nameof(WritingFontSize));
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to default 14
+            }
+        }
+
+        private void SaveWritingFontSize()
+        {
+            try
+            {
+                string path = GetSettingsFilePath();
+                string json = $"{{\n  \"WritingFontSize\": {WritingFontSize}\n}}";
+                File.WriteAllText(path, json);
+            }
+            catch
+            {
+                // Ignore save errors
             }
         }
     }

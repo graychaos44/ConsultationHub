@@ -260,7 +260,10 @@
 
                         <StackPanel Grid.Column="0" Margin="0,0,6,0">
                             <TextBlock Text="상담 요약 (한 줄 정리) *" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2" />
-                            <TextBox Text="{Binding EditRecord.Summary, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" />
+                            <TextBox Text="{Binding EditRecord.Summary, UpdateSourceTrigger=PropertyChanged}" 
+                                     FontSize="{Binding WritingFontSize}" 
+                                     PreviewMouseWheel="OnWritingTextBoxPreviewMouseWheel" 
+                                     Padding="6,4" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="1">
@@ -269,12 +272,30 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- DETAILS LABEL -->
-                    <TextBlock Grid.Row="4" Text="상세 상담 내용" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                    <!-- DETAILS HEADER WITH FONT SIZE CONTROLS -->
+                    <DockPanel Grid.Row="4" Margin="0,0,0,4">
+                        <TextBlock Text="상세 상담 내용" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        
+                        <!-- Font Size Toolbar -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="글자 크기:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <Button Content="A-" Command="{Binding DecreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" 
+                                    Padding="5,0" Height="20" MinWidth="24" FontSize="10" ToolTip="글자 크기 축소 (Ctrl + 마우스 휠 아래)" Margin="0,0,2,0" />
+                            <ComboBox ItemsSource="{Binding AvailableFontSizes}" SelectedItem="{Binding WritingFontSize}" 
+                                      ItemStringFormat="{}{0}pt" Width="58" Height="20" Padding="3,0" FontSize="11" VerticalContentAlignment="Center" ToolTip="작성 글자 크기 선택" Margin="0,0,2,0" />
+                            <Button Content="A+" Command="{Binding IncreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" 
+                                    Padding="5,0" Height="20" MinWidth="24" FontSize="10" ToolTip="글자 크기 확대 (Ctrl + 마우스 휠 위)" Margin="0,0,2,0" />
+                            <Button Content="초기화" Command="{Binding ResetFontSizeCommand}" Style="{StaticResource OutlineButton}" 
+                                    Padding="5,0" Height="20" FontSize="10" ToolTip="기본 크기(14pt)로 재설정" />
+                        </StackPanel>
+                    </DockPanel>
 
                     <!-- DETAILS TEXTBOX (남은 높이 자동 채움) -->
                     <TextBox Grid.Row="5" 
+                             x:Name="DetailsTextBox"
                              Text="{Binding EditRecord.Details, UpdateSourceTrigger=PropertyChanged}" 
+                             FontSize="{Binding WritingFontSize}"
+                             PreviewMouseWheel="OnWritingTextBoxPreviewMouseWheel"
                              TextWrapping="Wrap" 
                              AcceptsReturn="True" 
                              VerticalScrollBarVisibility="Auto" 

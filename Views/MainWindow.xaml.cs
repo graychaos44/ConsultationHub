@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ConsultationLedger.ViewModels;
 
 namespace ConsultationLedger.Views
@@ -30,6 +31,25 @@ namespace ConsultationLedger.Views
             if (DataContext is MainViewModel vm)
             {
                 vm.CheckDuplicates();
+            }
+        }
+
+        private void OnWritingTextBoxPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                if (DataContext is MainViewModel vm)
+                {
+                    if (e.Delta > 0)
+                    {
+                        vm.IncreaseFontSizeCommand.Execute(null);
+                    }
+                    else if (e.Delta < 0)
+                    {
+                        vm.DecreaseFontSizeCommand.Execute(null);
+                    }
+                    e.Handled = true;
+                }
             }
         }
     }
