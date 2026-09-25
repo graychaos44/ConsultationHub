@@ -38,15 +38,59 @@ namespace ConsultationLedger.ViewModels
         public ConsultationRecord EditRecord
         {
             get => _editRecord;
-            set => SetProperty(ref _editRecord, value);
+            set
+            {
+                if (SetProperty(ref _editRecord, value))
+                {
+                    OnPropertyChanged(nameof(EditModeTitle));
+                    OnPropertyChanged(nameof(IsEditingNew));
+                }
+            }
         }
 
         private bool _isEditingNew = true;
         public bool IsEditingNew
         {
             get => _isEditingNew;
-            set => SetProperty(ref _isEditingNew, value);
+            set
+            {
+                if (SetProperty(ref _isEditingNew, value))
+                {
+                    OnPropertyChanged(nameof(EditModeTitle));
+                }
+            }
         }
+
+        public string EditModeTitle => IsEditingNew
+            ? "✨ 새 상담 작성"
+            : $"📝 상담 기록 #{EditRecord.Id} 수정 중";
+
+        // Quick Filter Chips: 전체, 오늘, 진행중, 재상담 예정, 완료, 긴급
+        private string _currentQuickFilter = "전체";
+        public string CurrentQuickFilter
+        {
+            get => _currentQuickFilter;
+            set
+            {
+                if (SetProperty(ref _currentQuickFilter, value))
+                {
+                    OnPropertyChanged(nameof(IsFilterAll));
+                    OnPropertyChanged(nameof(IsFilterToday));
+                    OnPropertyChanged(nameof(IsFilterProgress));
+                    OnPropertyChanged(nameof(IsFilterFollowUp));
+                    OnPropertyChanged(nameof(IsFilterCompleted));
+                    OnPropertyChanged(nameof(IsFilterUrgent));
+                    PerformSearch();
+                }
+            }
+        }
+
+        public bool IsFilterAll => CurrentQuickFilter == "전체";
+        public bool IsFilterToday => CurrentQuickFilter == "오늘";
+        public bool IsFilterProgress => CurrentQuickFilter == "진행중";
+        public bool IsFilterFollowUp => CurrentQuickFilter == "재상담 예정";
+        public bool IsFilterCompleted => CurrentQuickFilter == "완료";
+        public bool IsFilterUrgent => CurrentQuickFilter == "긴급";
 
         // Filter Properties
         private string _searchText = string.Empty;
@@ -180,6 +224,8 @@ namespace ConsultationLedger.ViewModels
 
         // Commands
         public ICommand SearchCommand { get; }
+        public ICommand ClearSearchCommand { get; }
+        public ICommand SetQuickFilterCommand { get; }
         public ICommand ResetFilterCommand { get; }
         public ICommand NewRecordCommand { get; }
         public ICommand SaveRecordCommand { get; }
@@ -191,12 +237,18 @@ namespace ConsultationLedger.ViewModels
         public ICommand IncreaseFontSizeCommand { get; }
         public ICommand DecreaseFontSizeCommand { get; }
         public ICommand ResetFontSizeCommand { get; }
+        public ICommand SetFollowUpDaysCommand { get; }
+        public ICommand CopyPhoneCommand { get; }
+        public ICommand CopyAddressCommand { get; }
+        public ICommand CopyAllSummaryCommand { get; }
 
         public MainViewModel()
         {
             _dbService = new DatabaseService();
 
             SearchCommand = new RelayCommand(PerformSearch);
+            ClearSearchCommand = new RelayCommand(() => SearchText = string.Empty);
+            SetQuickFilterCommand = new RelayCommand<string>(filter => CurrentQuickFilter = filter ?? "전체");
             ResetFilterCommand = new RelayCommand(ResetFilters);
             NewRecordCommand = new RelayCommand(PrepareNewRecord);
             SaveRecordCommand = new RelayCommand(SaveRecord);
@@ -208,6 +260,10 @@ namespace ConsultationLedger.ViewModels
             IncreaseFontSizeCommand = new RelayCommand(IncreaseFontSize);
             DecreaseFontSizeCommand = new RelayCommand(DecreaseFontSize);
             ResetFontSizeCommand = new RelayCommand(ResetFontSize);
+            SetFollowUpDaysCommand = new RelayCommand<string>(SetFollowUpDays);
+            CopyPhoneCommand = new RelayCommand(CopyPhone);
+            CopyAddressCommand = new RelayCommand(CopyAddress);
+            CopyAllSummaryCommand = new RelayCommand(CopyAllSummary);
 
             LoadWritingFontSize();
             PrepareNewRecord();
@@ -230,7 +286,7 @@ namespace ConsultationLedger.ViewModels
                 string customerLabel = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName)
                     ? $"'{MatchedRecord.ClientName}' 님"
                     : $"연락처 '{MatchedRecord.ClientPhone}'";
-                ExistingMatchMessage = $"💡 힌트: {customerLabel}과 일치하는 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
+                ExistingMatchMessage = $"💡 일치 안내: {customerLabel}과 일치하는 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
             }
             else
             {
@@ -253,7 +309,7 @@ namespace ConsultationLedger.ViewModels
             EditRecord = temp;
 
             string label = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'";
-            StatusMessage = $"{label}의 기존 인적사항이 자동 입력되었습니다.";
+            StatusMessage = $"{label}의 기존 인적사항이 자동 완성되었습니다.";
         }
 
         private void FilterHistoryForMatchedCustomer()
@@ -275,13 +331,20 @@ namespace ConsultationLedger.ViewModels
 
         private void PerformSearch()
         {
-            var results = _dbService.GetFilteredRecords(SearchText, SelectedCategoryFilter, SelectedStatusFilter, StartDateFilter, EndDateFilter);
+            var results = _dbService.GetFilteredRecords(
+                SearchText, 
+                SelectedCategoryFilter, 
+                SelectedStatusFilter, 
+                StartDateFilter, 
+                EndDateFilter,
+                CurrentQuickFilter);
+
             for (int i = 0; i < results.Count; i++)
             {
                 results[i].RowIndex = i + 1;
             }
             Records = new ObservableCollection<ConsultationRecord>(results);
-            StatusMessage = $"조회 결과: 총 {Records.Count}건";
+            StatusMessage = $"조회 결과: 총 {Records.Count}건 ({CurrentQuickFilter})";
         }
 
         private void RefreshStats()
@@ -295,6 +358,15 @@ namespace ConsultationLedger.ViewModels
 
         private void ResetFilters()
         {
+            _currentQuickFilter = "전체";
+            OnPropertyChanged(nameof(CurrentQuickFilter));
+            OnPropertyChanged(nameof(IsFilterAll));
+            OnPropertyChanged(nameof(IsFilterToday));
+            OnPropertyChanged(nameof(IsFilterProgress));
+            OnPropertyChanged(nameof(IsFilterFollowUp));
+            OnPropertyChanged(nameof(IsFilterCompleted));
+            OnPropertyChanged(nameof(IsFilterUrgent));
+
             SearchText = string.Empty;
             SelectedCategoryFilter = "전체";
             SelectedStatusFilter = "전체";
@@ -314,6 +386,7 @@ namespace ConsultationLedger.ViewModels
             };
             IsEditingNew = true;
             SelectedRecord = null;
+            HasExistingCustomerMatch = false;
             StatusMessage = "신규 상담 입력 모드";
         }
 
@@ -337,12 +410,19 @@ namespace ConsultationLedger.ViewModels
                 UpdatedAt = record.UpdatedAt
             };
             IsEditingNew = false;
+            HasExistingCustomerMatch = false;
             string targetTitle = !string.IsNullOrWhiteSpace(record.ClientName) ? record.ClientName : (!string.IsNullOrWhiteSpace(record.ClientPhone) ? record.ClientPhone : record.Address);
             StatusMessage = $"상담 기록 #{record.Id} ({targetTitle}) 수정 모드";
         }
 
         private void SaveRecord()
         {
+            // Auto-format phone before validating
+            if (!string.IsNullOrWhiteSpace(EditRecord.ClientPhone))
+            {
+                EditRecord.ClientPhone = ConsultationRecord.FormatPhoneNumber(EditRecord.ClientPhone);
+            }
+
             if (string.IsNullOrWhiteSpace(EditRecord.ClientPhone))
             {
                 MessageBox.Show("연락처(전화번호)를 입력해 주세요. (필수 항목)", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -398,21 +478,98 @@ namespace ConsultationLedger.ViewModels
             }
         }
 
+        private void SetFollowUpDays(string? daysStr)
+        {
+            if (int.TryParse(daysStr, out int days))
+            {
+                if (days < 0)
+                {
+                    EditRecord.FollowUpDate = null;
+                    StatusMessage = "재상담 일정이 해제되었습니다.";
+                }
+                else
+                {
+                    EditRecord.FollowUpDate = DateTime.Today.AddDays(days);
+                    string label = days == 0 ? "오늘" : $"{days}일 후 ({EditRecord.FollowUpDate.Value:MM-dd})";
+                    StatusMessage = $"재상담 예정일이 {label}로 설정되었습니다.";
+                }
+
+                // Trigger property change on EditRecord
+                var temp = EditRecord;
+                EditRecord = null!;
+                EditRecord = temp;
+            }
+        }
+
+        private void CopyPhone()
+        {
+            if (!string.IsNullOrWhiteSpace(EditRecord.ClientPhone))
+            {
+                Clipboard.SetText(EditRecord.ClientPhone);
+                StatusMessage = $"연락처 '{EditRecord.ClientPhone}'가 클립보드에 복사되었습니다. 📋";
+            }
+            else
+            {
+                StatusMessage = "복사할 연락처가 없습니다.";
+            }
+        }
+
+        private void CopyAddress()
+        {
+            if (!string.IsNullOrWhiteSpace(EditRecord.Address))
+            {
+                Clipboard.SetText(EditRecord.Address);
+                StatusMessage = $"주소 '{EditRecord.Address}'가 클립보드에 복사되었습니다. 📋";
+            }
+            else
+            {
+                StatusMessage = "복사할 주소가 없습니다.";
+            }
+        }
+
+        private void CopyAllSummary()
+        {
+            string name = string.IsNullOrWhiteSpace(EditRecord.ClientName) ? "(미기재)" : EditRecord.ClientName;
+            string phone = string.IsNullOrWhiteSpace(EditRecord.ClientPhone) ? "-" : EditRecord.ClientPhone;
+            string addr = string.IsNullOrWhiteSpace(EditRecord.Address) ? "-" : EditRecord.Address;
+            string followUp = EditRecord.FollowUpDate.HasValue ? EditRecord.FollowUpDate.Value.ToString("yyyy-MM-dd") : "없음";
+
+            string text = $@"📋 [상담 기록 공유]
+• 고객명: {name}
+• 연락처: {phone}
+• 주소: {addr}
+• 일시: {EditRecord.ConsultationDate:yyyy-MM-dd HH:mm}
+• 구분/상태: {EditRecord.Category} / {EditRecord.Status} (우선순위: {EditRecord.Priority})
+• 재상담일: {followUp}
+• 상담 요약: {EditRecord.Summary}
+• 상세 내용:
+{EditRecord.Details}";
+
+            Clipboard.SetText(text);
+            StatusMessage = "상담 내용 전체가 메신저 공유용으로 클립보드에 복사되었습니다. 📋";
+        }
+
         private void ExportCsv()
         {
             try
             {
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                string fileName = $"상담장부_내보내기_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string fileName = $"상담장부_추출_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
                 string fullPath = Path.Combine(desktopPath, fileName);
 
                 ExportService.ExportToCsv(Records, fullPath);
-                MessageBox.Show($"현재 검색된 {Records.Count}건의 상담 기록이 바탕화면에 저장되었습니다.\n\n파일: {fileName}", "CSV 내보내기 완료", MessageBoxButton.OK, MessageBoxImage.Information);
-                StatusMessage = $"CSV 내보내기 완료: {fileName}";
+                StatusMessage = $"CSV 내보내기 완료: 바탕화면/{fileName}";
+
+                var result = MessageBox.Show($"바탕화면에 파일이 저장되었습니다.\n\n파일명: {fileName}\n\n파일이 있는 폴더를 여시겠습니까?", "내보내기 완료", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (result == MessageBoxResult.Yes)
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"내보내기 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"CSV 내보내기 중 오류가 발생했습니다.\n\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "CSV 내보내기 실패";
             }
         }
 
@@ -420,7 +577,7 @@ namespace ConsultationLedger.ViewModels
         {
             if (WritingFontSize < 28)
             {
-                WritingFontSize = Math.Min(28, WritingFontSize + 1);
+                WritingFontSize += 1.0;
                 StatusMessage = $"작성 글자 크기: {WritingFontSize}pt";
             }
         }
@@ -429,46 +586,41 @@ namespace ConsultationLedger.ViewModels
         {
             if (WritingFontSize > 10)
             {
-                WritingFontSize = Math.Max(10, WritingFontSize - 1);
+                WritingFontSize -= 1.0;
                 StatusMessage = $"작성 글자 크기: {WritingFontSize}pt";
             }
         }
 
         private void ResetFontSize()
         {
-            WritingFontSize = 14;
+            WritingFontSize = 14.0;
             StatusMessage = "작성 글자 크기가 기본값(14pt)으로 재설정되었습니다.";
         }
 
-        private static string GetSettingsFilePath()
+        private string GetFontSizeSettingsPath()
         {
             string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger");
-            Directory.CreateDirectory(appDataPath);
-            return Path.Combine(appDataPath, "settings.json");
+            return Path.Combine(appDataPath, "editor_font_size.txt");
         }
 
         private void LoadWritingFontSize()
         {
             try
             {
-                string path = GetSettingsFilePath();
+                string path = GetFontSizeSettingsPath();
                 if (File.Exists(path))
                 {
-                    string json = File.ReadAllText(path);
-                    using var doc = System.Text.Json.JsonDocument.Parse(json);
-                    if (doc.RootElement.TryGetProperty("WritingFontSize", out var prop) && prop.TryGetDouble(out var size))
+                    string text = File.ReadAllText(path).Trim();
+                    if (double.TryParse(text, out double size) && size >= 10 && size <= 28)
                     {
-                        if (size >= 10 && size <= 28)
-                        {
-                            _writingFontSize = size;
-                            OnPropertyChanged(nameof(WritingFontSize));
-                        }
+                        _writingFontSize = size;
+                        OnPropertyChanged(nameof(WritingFontSize));
                     }
                 }
             }
             catch
             {
-                // Fallback to default 14
+                _writingFontSize = 14.0;
             }
         }
 
@@ -476,13 +628,13 @@ namespace ConsultationLedger.ViewModels
         {
             try
             {
-                string path = GetSettingsFilePath();
-                string json = $"{{\n  \"WritingFontSize\": {WritingFontSize}\n}}";
-                File.WriteAllText(path, json);
+                string path = GetFontSizeSettingsPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, WritingFontSize.ToString());
             }
             catch
             {
-                // Ignore save errors
+                // Silently fallback
             }
         }
     }

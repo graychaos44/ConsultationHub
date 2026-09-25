@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ConsultationLedger.Models;
 using ConsultationLedger.ViewModels;
 
 namespace ConsultationLedger.Views
@@ -11,6 +12,7 @@ namespace ConsultationLedger.Views
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+            PreviewKeyDown += MainWindow_PreviewKeyDown;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -26,11 +28,45 @@ namespace ConsultationLedger.Views
             }
         }
 
+        private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            // Ctrl + F: Focus Search Box
+            if (e.Key == Key.F && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                SearchBox.Focus();
+                SearchBox.SelectAll();
+                e.Handled = true;
+            }
+            // F5: Refresh Data
+            else if (e.Key == Key.F5)
+            {
+                if (DataContext is MainViewModel vm)
+                {
+                    vm.LoadData();
+                    e.Handled = true;
+                }
+            }
+        }
+
         private void OnCustomerInfoInputChanged(object sender, TextChangedEventArgs e)
         {
             if (DataContext is MainViewModel vm)
             {
                 vm.CheckDuplicates();
+            }
+        }
+
+        private void OnPhoneTextBoxLostFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox tb && DataContext is MainViewModel vm)
+            {
+                string raw = tb.Text;
+                string formatted = ConsultationRecord.FormatPhoneNumber(raw);
+                if (raw != formatted)
+                {
+                    vm.EditRecord.ClientPhone = formatted;
+                    tb.Text = formatted;
+                }
             }
         }
 

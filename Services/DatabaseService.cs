@@ -44,6 +44,11 @@ namespace ConsultationLedger.Services
                     CreatedAt TEXT NOT NULL,
                     UpdatedAt TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS AppMeta (
+                    Key TEXT PRIMARY KEY,
+                    Value TEXT
+                );
             ";
 
             using var command = new SqliteCommand(createTableSql, connection);
@@ -60,13 +65,24 @@ namespace ConsultationLedger.Services
                 // Column already exists
             }
 
-            // Seed sample data if empty
-            string countSql = "SELECT COUNT(*) FROM Consultations;";
-            using var countCmd = new SqliteCommand(countSql, connection);
-            long count = (long)countCmd.ExecuteScalar()!;
-            if (count == 0)
+            // Check if seeded before
+            string checkMetaSql = "SELECT Value FROM AppMeta WHERE Key = 'IsSeeded';";
+            using var checkMetaCmd = new SqliteCommand(checkMetaSql, connection);
+            var seededVal = checkMetaCmd.ExecuteScalar();
+
+            if (seededVal == null)
             {
-                SeedSampleData(connection);
+                string countSql = "SELECT COUNT(*) FROM Consultations;";
+                using var countCmd = new SqliteCommand(countSql, connection);
+                long count = (long)countCmd.ExecuteScalar()!;
+                if (count == 0)
+                {
+                    SeedSampleData(connection);
+                }
+
+                string setMetaSql = "INSERT OR REPLACE INTO AppMeta (Key, Value) VALUES ('IsSeeded', '1');";
+                using var setMetaCmd = new SqliteCommand(setMetaSql, connection);
+                setMetaCmd.ExecuteNonQuery();
             }
         }
 
@@ -89,22 +105,6 @@ namespace ConsultationLedger.Services
                     Tags = "#신규고객,#견적서",
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
-                },
-                new ConsultationRecord
-                {
-                    ConsultationDate = DateTime.Now.AddDays(-1),
-                    ClientName = "이영희",
-                    ClientPhone = "010-1234-5678",
-                    Address = "경기도 성남시 분당구 판교역로 456",
-                    Category = "서비스지원",
-                    Status = "진행중",
-                    Priority = "중요",
-                    Summary = "시스템 접속 오류 해결 요청",
-                    Details = "로그인 시 403 권한 오류 발생. 계정 권한 재설정 진행 중이며 담당 엔지니어 확인 필요.",
-                    FollowUpDate = DateTime.Today,
-                    Tags = "#장애처리,#긴급",
-                    CreatedAt = DateTime.Now.AddDays(-1),
-                    UpdatedAt = DateTime.Now.AddDays(-1)
                 },
                 new ConsultationRecord
                 {
@@ -156,7 +156,13 @@ namespace ConsultationLedger.Services
             cmd.ExecuteNonQuery();
         }
 
-        public List<ConsultationRecord> GetFilteredRecords(string? searchText, string? category, string? status, DateTime? startDate, DateTime? endDate)
+        public List<ConsultationRecord> GetFilteredRecords(
+            string? searchText, 
+            string? category, 
+            string? status, 
+            DateTime? startDate, 
+            DateTime? endDate,
+            string? quickFilter = "전체")
         {
             var list = new List<ConsultationRecord>();
 
@@ -190,6 +196,29 @@ namespace ConsultationLedger.Services
                 sql += " AND ConsultationDate <= @EndDate";
             }
 
+            // Quick Filter Chips handling
+            if (!string.IsNullOrWhiteSpace(quickFilter))
+            {
+                switch (quickFilter)
+                {
+                    case "오늘":
+                        sql += " AND ConsultationDate >= @TodayStart AND ConsultationDate < @TomorrowStart";
+                        break;
+                    case "진행중":
+                        sql += " AND Status = '진행중'";
+                        break;
+                    case "재상담 예정":
+                        sql += " AND FollowUpDate IS NOT NULL AND Status != '완료'";
+                        break;
+                    case "완료":
+                        sql += " AND Status = '완료'";
+                        break;
+                    case "긴급":
+                        sql += " AND Priority = '긴급'";
+                        break;
+                }
+            }
+
             sql += " ORDER BY ConsultationDate DESC;";
 
             using var cmd = new SqliteCommand(sql, connection);
@@ -217,6 +246,12 @@ namespace ConsultationLedger.Services
             if (endDate.HasValue)
             {
                 cmd.Parameters.AddWithValue("@EndDate", endDate.Value.Date.AddDays(1).AddTicks(-1).ToString("o"));
+            }
+
+            if (quickFilter == "오늘")
+            {
+                cmd.Parameters.AddWithValue("@TodayStart", DateTime.Today.ToString("o"));
+                cmd.Parameters.AddWithValue("@TomorrowStart", DateTime.Today.AddDays(1).ToString("o"));
             }
 
             using var reader = cmd.ExecuteReader();
@@ -286,59 +321,62 @@ namespace ConsultationLedger.Services
             cmd.ExecuteNonQuery();
         }
 
-        public (int todayCount, int monthCount, int pendingFollowUpCount, int totalCount) GetStatistics()
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            DateTime today = DateTime.Today;
-            DateTime firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
-
-            string todaySql = "SELECT COUNT(*) FROM Consultations WHERE Date(ConsultationDate) = Date('now', 'localtime');";
-            string monthSql = "SELECT COUNT(*) FROM Consultations WHERE ConsultationDate >= @FirstDay;";
-            string pendingSql = "SELECT COUNT(*) FROM Consultations WHERE FollowUpDate IS NOT NULL AND Status != '완료';";
-            string totalSql = "SELECT COUNT(*) FROM Consultations;";
-
-            using var todayCmd = new SqliteCommand(todaySql, connection);
-            int todayCount = Convert.ToInt32(todayCmd.ExecuteScalar());
-
-            using var monthCmd = new SqliteCommand(monthSql, connection);
-            monthCmd.Parameters.AddWithValue("@FirstDay", firstDayOfMonth.ToString("o"));
-            int monthCount = Convert.ToInt32(monthCmd.ExecuteScalar());
-
-            using var pendingCmd = new SqliteCommand(pendingSql, connection);
-            int pendingCount = Convert.ToInt32(pendingCmd.ExecuteScalar());
-
-            using var totalCmd = new SqliteCommand(totalSql, connection);
-            int totalCount = Convert.ToInt32(totalCmd.ExecuteScalar());
-
-            return (todayCount, monthCount, pendingCount, totalCount);
-        }
-
         public List<ConsultationRecord> FindMatchingCustomers(string? phone, string? address, string? name)
         {
             var results = new List<ConsultationRecord>();
-            bool hasPhone = !string.IsNullOrWhiteSpace(phone) && phone.Trim().Length >= 4;
-            bool hasAddress = !string.IsNullOrWhiteSpace(address) && address.Trim().Length >= 3;
-            bool hasName = !string.IsNullOrWhiteSpace(name) && name.Trim().Length >= 2;
 
-            if (!hasPhone && !hasAddress && !hasName)
+            string cleanPhone = new string((phone ?? "").Where(char.IsDigit).ToArray());
+            string cleanAddress = (address ?? "").Trim();
+            string cleanName = (name ?? "").Trim();
+
+            // Match requires at least 4 digits of phone, or at least 4 chars of address, or at least 2 chars of name
+            bool hasValidPhone = cleanPhone.Length >= 4;
+            bool hasValidAddress = cleanAddress.Length >= 4;
+            bool hasValidName = cleanName.Length >= 2;
+
+            if (!hasValidPhone && !hasValidAddress && !hasValidName)
+            {
                 return results;
+            }
 
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            string sql = "SELECT * FROM Consultations WHERE 1=0";
-            if (hasPhone) sql += " OR ClientPhone LIKE @Phone";
-            if (hasAddress) sql += " OR Address LIKE @Address";
-            if (hasName) sql += " OR ClientName = @Name";
+            var conditions = new List<string>();
 
-            sql += " ORDER BY ConsultationDate DESC LIMIT 5;";
+            if (hasValidPhone)
+            {
+                conditions.Add("REPLACE(REPLACE(ClientPhone, '-', ''), ' ', '') LIKE @Phone");
+            }
+            if (hasValidAddress)
+            {
+                conditions.Add("Address LIKE @Address");
+            }
+            if (hasValidName)
+            {
+                conditions.Add("ClientName LIKE @Name");
+            }
+
+            string sql = $@"
+                SELECT * FROM Consultations 
+                WHERE {string.Join(" OR ", conditions)}
+                ORDER BY ConsultationDate DESC
+                LIMIT 10;
+            ";
 
             using var cmd = new SqliteCommand(sql, connection);
-            if (hasPhone) cmd.Parameters.AddWithValue("@Phone", $"%{phone!.Trim()}%");
-            if (hasAddress) cmd.Parameters.AddWithValue("@Address", $"%{address!.Trim()}%");
-            if (hasName) cmd.Parameters.AddWithValue("@Name", name!.Trim());
+            if (hasValidPhone)
+            {
+                cmd.Parameters.AddWithValue("@Phone", $"%{cleanPhone}%");
+            }
+            if (hasValidAddress)
+            {
+                cmd.Parameters.AddWithValue("@Address", $"%{cleanAddress}%");
+            }
+            if (hasValidName)
+            {
+                cmd.Parameters.AddWithValue("@Name", $"%{cleanName}%");
+            }
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -349,39 +387,74 @@ namespace ConsultationLedger.Services
             return results;
         }
 
-        private ConsultationRecord ReadRecord(SqliteDataReader reader)
+        public (int TodayCount, int MonthCount, int PendingFollowUpCount, int TotalCount) GetStatistics()
         {
-            DateTime ParseDate(string colName, DateTime defaultValue)
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            string todayStart = DateTime.Today.ToString("o");
+            string tomorrowStart = DateTime.Today.AddDays(1).ToString("o");
+            string monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("o");
+            string nextMonthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1).ToString("o");
+
+            string sql = @"
+                SELECT 
+                    (SELECT COUNT(*) FROM Consultations WHERE ConsultationDate >= @TodayStart AND ConsultationDate < @TomorrowStart),
+                    (SELECT COUNT(*) FROM Consultations WHERE ConsultationDate >= @MonthStart AND ConsultationDate < @NextMonthStart),
+                    (SELECT COUNT(*) FROM Consultations WHERE FollowUpDate IS NOT NULL AND Status != '완료'),
+                    (SELECT COUNT(*) FROM Consultations);
+            ";
+
+            using var cmd = new SqliteCommand(sql, connection);
+            cmd.Parameters.AddWithValue("@TodayStart", todayStart);
+            cmd.Parameters.AddWithValue("@TomorrowStart", tomorrowStart);
+            cmd.Parameters.AddWithValue("@MonthStart", monthStart);
+            cmd.Parameters.AddWithValue("@NextMonthStart", nextMonthStart);
+
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
             {
-                int ord = reader.GetOrdinal(colName);
-                if (reader.IsDBNull(ord)) return defaultValue;
-                return DateTime.TryParse(reader.GetString(ord), out var dt) ? dt : defaultValue;
+                int today = reader.GetInt32(0);
+                int month = reader.GetInt32(1);
+                int pending = reader.GetInt32(2);
+                int total = reader.GetInt32(3);
+                return (today, month, pending, total);
             }
 
-            DateTime? ParseNullableDate(string colName)
-            {
-                int ord = reader.GetOrdinal(colName);
-                if (reader.IsDBNull(ord)) return null;
-                return DateTime.TryParse(reader.GetString(ord), out var dt) ? dt : null;
-            }
+            return (0, 0, 0, 0);
+        }
 
-            return new ConsultationRecord
+        private static ConsultationRecord ReadRecord(SqliteDataReader reader)
+        {
+            var record = new ConsultationRecord
             {
                 Id = reader.GetInt64(reader.GetOrdinal("Id")),
-                ConsultationDate = ParseDate("ConsultationDate", DateTime.Now),
-                ClientName = reader.IsDBNull(reader.GetOrdinal("ClientName")) ? "" : reader.GetString(reader.GetOrdinal("ClientName")),
+                ConsultationDate = DateTime.Parse(reader.GetString(reader.GetOrdinal("ConsultationDate"))),
+                ClientName = reader.GetString(reader.GetOrdinal("ClientName")),
                 ClientPhone = reader.IsDBNull(reader.GetOrdinal("ClientPhone")) ? "" : reader.GetString(reader.GetOrdinal("ClientPhone")),
-                Address = reader.IsDBNull(reader.GetOrdinal("Address")) ? "" : reader.GetString(reader.GetOrdinal("Address")),
                 Category = reader.GetString(reader.GetOrdinal("Category")),
                 Status = reader.GetString(reader.GetOrdinal("Status")),
                 Priority = reader.GetString(reader.GetOrdinal("Priority")),
                 Summary = reader.GetString(reader.GetOrdinal("Summary")),
                 Details = reader.IsDBNull(reader.GetOrdinal("Details")) ? "" : reader.GetString(reader.GetOrdinal("Details")),
-                FollowUpDate = ParseNullableDate("FollowUpDate"),
                 Tags = reader.IsDBNull(reader.GetOrdinal("Tags")) ? "" : reader.GetString(reader.GetOrdinal("Tags")),
-                CreatedAt = ParseDate("CreatedAt", DateTime.Now),
-                UpdatedAt = ParseDate("UpdatedAt", DateTime.Now)
+                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
+                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
             };
+
+            int addressIndex = reader.GetOrdinal("Address");
+            if (addressIndex >= 0 && !reader.IsDBNull(addressIndex))
+            {
+                record.Address = reader.GetString(addressIndex);
+            }
+
+            int followUpIndex = reader.GetOrdinal("FollowUpDate");
+            if (!reader.IsDBNull(followUpIndex))
+            {
+                record.FollowUpDate = DateTime.Parse(reader.GetString(followUpIndex));
+            }
+
+            return record;
         }
     }
 }

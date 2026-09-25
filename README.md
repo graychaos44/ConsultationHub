@@ -1,28 +1,37 @@
-# 📋 ConsultationHub - 일일 상담 관리 장부
+# 📋 ConsultationHub v2.0 - 스마트 고객 상담 관리 장부
 
-> C# .NET 8.0 WPF 및 SQLite 기반 **윈도우 데스크톱 상담 관리 응용 프로그램**입니다.  
-> 고객 인적사항(이름, 연락처, 주소)과 상담 메모를 손쉽게 기록하고, 실시간 자동 중복 감지 힌트 및 엑셀(CSV) 내보내기 기능을 제공합니다.
+> C# .NET 8.0 WPF 및 SQLite 기반의 **차세대 모던 데스크톱 고객 상담 관리 솔루션**입니다.  
+> 세련된 Slate & Indigo UI, 마스터-디테일(Master-Detail) 인터페이스, 원클릭 퀵 필터 칩, 클립보드 복사 툴, 실시간 고객 감지 및 엑셀(CSV) 내보내기 기능을 제공합니다.
 
 ---
 
-## ✨ 핵심 기능 (Key Features)
+## ✨ 핵심 업그레이드 기능 (Key Features in v2.0)
 
-- **👤 핵심 고객 인적사항 카드 (중앙 배치)**
-  - 가장 중요한 **고객명(성함)**, **연락처(전화번호)**, **주소(소재지/배송지)** 입력란을 중앙 최상단에 직관적인 강조 카드로 배치하여 편안하게 기록할 수 있습니다.
+- **🖥️ 2단 분할 마스터-디테일 (Master-Detail) 레이아웃**
+  - 기존 3단의 답답했던 필터 패널 공간을 최적화하고, 좌측 **스마트 검색 & 목록(550px)** 과 우측 **상담 작성 캔버스(가변)** 의 현대적인 CRM 워크스페이스를 제공합니다.
 
-- **⚡ 실시간 자동 힌트 감지 (Auto Duplicate Hint)**
-  - 타자를 치는 순간, 기존 DB에 저장된 동일/유사 고객 정보가 있는 경우 파란색 **자동 힌트 메모 배너**(`💡 힌트: '김철수' 님과 일치하는 이전 상담 N건 보관 중`)가 실시간으로 나타납니다.
-  - `기존정보 채우기` 및 `이력 보기` 버튼을 통해 기존 고객 정보를 즉시 자동 완성하거나 과거 상담 이력을 바로 대조할 수 있습니다.
+- **🏷️ 원클릭 퀵 필터 칩 (Quick Filter Chips)**
+  - 콤보박스를 열 필요 없이 `[전체]`, `[오늘 상담]`, `[진행중]`, `[재상담 예정]`, `[완료]`, `[긴급]` 칩 클릭 한 번으로 목록이 즉시 필터링됩니다.
 
-- **🔢 깔끔한 순번(No.) 및 총 건수 표시**
-  - 삭제 시 번호가 건너뛰던 DB ID를 숨기고, 목록 기준 깔끔한 **1, 2, 3... 순번**과 **전체 데이터 총 건수 뱃지**를 직관적으로 보여줍니다.
+- **⌨️ 완벽한 업무 단축키 지원**
+  - `Ctrl + S`: 상담 내용 즉시 저장
+  - `Ctrl + N`: 신규 상담 작성
+  - `Ctrl + F`: 검색창 포커스 및 검색어 전체 선택
+  - `F5`: 최신 데이터 새로고침
+  - `Ctrl + 마우스 휠`: 상담 상세 입력란 실시간 줌 확대/축소
 
-- **🔍 다중 필터 & 스마트 실시간 검색**
-  - 고객명, 연락처, 주소, 상담 요약, 상세 메모, 태그 항목을 0.1초 내 즉시 검색할 수 있으며, 카테고리/진행 상태/날짜 범위별 필터 조회가 가능합니다.
+- **📋 원클릭 클립보드 복사 툴바**
+  - 연락처 옆 `[복사]`, 주소 옆 `[복사]` 버튼으로 1초 만에 클립보드 복사
+  - `📋 내용 복사` 버튼 클릭 시 메신저(카카오톡/잔디/슬랙)나 사내 ERP에 바로 공유할 수 있는 정돈된 요약 텍스트로 자동 복사
 
-- **💾 안전한 로컬 SQLite DB & 엑셀(CSV) 내보내기**
-  - 사용자 컴퓨터 내 로컬 데이터베이스(`consultations.db`)에 오프라인으로 100% 안전하게 자동 보관됩니다.
-  - `📊 CSV 파일 내보내기` 버튼 클릭 시 현재 검색된 기록이 바탕화면에 엑셀 호환 CSV 파일로 즉시 출력됩니다.
+- **📞 전화번호 자동 하이픈 포맷팅**
+  - `01012345678`처럼 숫자만 연속 입력해도 포커스 이동 시 `010-1234-5678`로 자동 변환
+
+- **⏰ 빠른 재상담일 프리셋 지정**
+  - 달력을 찾을 필요 없이 `[오늘]`, `[+1일]`, `[+3일]`, `[+7일(1주)]`, `[지우기]` 버튼으로 즉시 일정 설정
+
+- **🎨 세련된 알약형 상태 뱃지 (Pill Badges)**
+  - 완료(그린), 진행중(블루), 대기중(슬레이트), 보류(앰버)의 현대적인 컬러 뱃지 적용
 
 ---
 
@@ -33,59 +42,22 @@
 | **Framework** | .NET 8.0 WPF (Windows Presentation Foundation) |
 | **Architecture** | MVVM (Model-View-ViewModel) Pattern |
 | **Database** | SQLite (`Microsoft.Data.Sqlite` 8.0.8) |
-| **Design** | Custom Modern XAML ResourceDictionary (Slate/Indigo UI, Rounded Cards, Custom Badges) |
+| **Design** | Modern Slate & Indigo Design System, Custom Pill Badges |
 | **Packaging** | Win-X64 Single-File Self-Contained Desktop Application |
 
 ---
 
-## 📁 프로젝트 구조 (Project Structure)
+## 🚀 실행 및 빌드 방법
 
-```text
-ConsultationLedger/
-├── Models/
-│   └── ConsultationRecord.cs       # 상담 데이터 모델 (순번, 고객명, 연락처, 주소, 일시 등)
-├── Services/
-│   ├── DatabaseService.cs          # SQLite DB CRUD, 자동 마이그레이션, 실시간 중복 검색
-│   └── ExportService.cs            # CSV 엑셀 파일 내보내기
-├── ViewModels/
-│   ├── ViewModelBase.cs            # INotifyPropertyChanged 기본 클래스
-│   ├── RelayCommand.cs             # MVVM Command 바인딩 구현체
-│   └── MainViewModel.cs            # 메인 앱 상태, 실시간 힌트 감지, 필터링 로직
-├── Styles/
-│   └── ModernTheme.xaml            # 슬레이트/인디고풍 UI 컨트롤 테마
-├── Views/
-│   ├── MainWindow.xaml             # 3단 컬럼 메인 대시보드 레이아웃 XAML
-│   └── MainWindow.xaml.cs          # 실시간 TextChanged 이벤트 처리
-├── App.xaml / App.xaml.cs          # 앱 진입점 및 리소스 머지
-├── MANUAL.md                       # 상세 사용자 매뉴얼
-└── ConsultationLedger.csproj       # WPF 프로젝트 구성 파일
-```
-
----
-
-## 🚀 실행 및 빌드 방법 (Getting Started)
-
-### 1. 소스 코드 빌드 및 실행
+### 1. 단독 실행형 (.exe) 빌드 및 배포
 ```powershell
-# 프로젝트 빌드
-dotnet build ConsultationLedger.csproj
-
-# 실행
-dotnet run --project ConsultationLedger.csproj
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish ConsultationLedger.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o "C:\Users\grayc\OneDrive\Desktop\상담장부"
 ```
 
-### 2. 단독 실행형 (Self-Contained .exe) 파일 단일 빌드
-```powershell
-# .NET 미설치 PC에서도 즉시 실행되는 단일 파일 빌드
-dotnet publish ConsultationLedger.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./Publish
-```
+### 2. 바로 실행
+- 바탕화면의 **`상담장부`** 또는 **`ConsultationHub`** 바로가기를 더블 클릭하여 실행합니다.
 
 ---
 
-## 📖 사용 설명서 (Manual)
-자세한 화면 구성 및 기능 사용 방법은 [MANUAL.md](MANUAL.md) 문서를 참고하세요.
-
----
-
-## 📄 License
-This project is licensed under the MIT License.
+## 📖 사용 설명서
+상세한 기능 가이드라인은 [MANUAL.md](MANUAL.md) 문서를 확인하세요.
