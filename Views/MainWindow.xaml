@@ -8,7 +8,7 @@
         Title="ConsultationHub - 스마트 고객 상담 관리 장부" 
         Icon="../app_icon.ico"
         Height="890" Width="1440"
-        MinHeight="700" MinWidth="1100"
+        MinHeight="680" MinWidth="1050"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}">
 
@@ -30,7 +30,7 @@
         <Grid.RowDefinitions>
             <!-- Row 0: Ultra-Slim Brand Header & Compact KPI Bar (~36px) -->
             <RowDefinition Height="Auto" />
-            <!-- Row 1: Main Two-Column Workspace (Master-Detail, Fills Screen) -->
+            <!-- Row 1: Main Two-Column Workspace (Master-Detail with Splitter) -->
             <RowDefinition Height="*" />
             <!-- Row 2: Status Bar & Shortcut Guide (~22px) -->
             <RowDefinition Height="Auto" />
@@ -56,13 +56,13 @@
                         <TextBlock Text="Consultation" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                         <TextBlock Text="Hub" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" />
                         <Border Background="{StaticResource PrimarySoftBrush}" CornerRadius="4" Padding="4,1" Margin="6,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v2.1" FontSize="10" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" />
+                            <TextBlock Text="v2.2" FontSize="10" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" />
                         </Border>
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
 
-            <!-- Compact KPI Badges Bar (세로 공간 0 차지, 슬림 가로 배치) -->
+            <!-- Compact KPI Badges Bar (슬림 가로 배치) -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
                 <!-- Today -->
                 <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="9,3" Margin="0,0,6,0">
@@ -109,22 +109,22 @@
         </Grid>
 
         <!-- ============================================================== -->
-        <!-- MAIN TWO-COLUMN SPLIT WORKSPACE (MASTER - DETAIL)              -->
+        <!-- MAIN TWO-COLUMN SPLIT WORKSPACE WITH DRAGGABLE SPLITTER       -->
         <!-- ============================================================== -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- Left: Master Consultation List & Smart Filter (480px) -->
-                <ColumnDefinition Width="480" MinWidth="420" />
-                <!-- Center Divider Margin -->
-                <ColumnDefinition Width="12" />
-                <!-- Right: Consultation Detail & Smart Editor (Flex *, 광활한 작성 공간 확보) -->
-                <ColumnDefinition Width="*" MinWidth="600" />
+                <!-- Left: Master Consultation List & Smart Filter (드래그 조절 가능) -->
+                <ColumnDefinition x:Name="LeftColumn" Width="430" MinWidth="220" MaxWidth="850" />
+                <!-- Center: Interactive GridSplitter Column (마우스 드래그 구분선) -->
+                <ColumnDefinition x:Name="SplitterColumn" Width="10" />
+                <!-- Right: Consultation Detail & Smart Editor (Flex *, 광활한 작성 공간) -->
+                <ColumnDefinition x:Name="RightColumn" Width="*" MinWidth="420" />
             </Grid.ColumnDefinitions>
 
             <!-- ============================================== -->
             <!-- LEFT COLUMN: MASTER CONSULTATION LIST PANE     -->
             <!-- ============================================== -->
-            <Border Grid.Column="0" Style="{StaticResource CardPanel}" Padding="12,10">
+            <Border x:Name="MasterListBorder" Grid.Column="0" Style="{StaticResource CardPanel}" Padding="12,10">
                 <Grid>
                     <Grid.RowDefinitions>
                         <!-- Row 0: Search Input Box -->
@@ -318,6 +318,7 @@
                                         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
                                         <Setter Property="FontSize" Value="11" />
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
@@ -329,12 +330,13 @@
                                         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
                                         <Setter Property="FontSize" Value="11" />
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
                             <!-- Date (MM-dd HH:mm) -->
-                            <DataGridTextColumn Header="일시" Binding="{Binding ShortDate}" Width="78">
+                            <DataGridTextColumn Header="일시" Binding="{Binding ShortDate}" Width="76">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
@@ -360,13 +362,49 @@
                 </Grid>
             </Border>
 
+            <!-- ============================================================== -->
+            <!-- CENTER: DRAGGABLE GRIDSPLITTER (마우스 드래그 좌우 비율 조절)   -->
+            <!-- ============================================================== -->
+            <GridSplitter x:Name="MainSplitter" 
+                          Grid.Column="1" 
+                          Width="10" 
+                          HorizontalAlignment="Stretch" 
+                          VerticalAlignment="Stretch" 
+                          Background="Transparent" 
+                          Cursor="SizeWE" 
+                          ShowsPreview="False" 
+                          ResizeDirection="Columns" 
+                          ResizeBehavior="PreviousAndNext"
+                          MouseDoubleClick="OnSplitterDoubleClicked">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="Transparent" SnapsToDevicePixels="True" ToolTip="마우스 드래그로 좌우 너비 조절 (더블클릭 시 기본 너비 복원)">
+                            <!-- Center Grip Handle -->
+                            <Border x:Name="GripBar" Width="4" Height="48" CornerRadius="2" 
+                                    Background="{StaticResource BorderDarkBrush}" 
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="GripBar" Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                <Setter TargetName="GripBar" Property="Width" Value="6" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="GripBar" Property="Background" Value="{StaticResource PrimaryDarkBrush}" />
+                                <Setter TargetName="GripBar" Property="Width" Value="6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
             <!-- ================================================================ -->
             <!-- RIGHT COLUMN: DETAIL & SMART EDITOR (TEXT-FIRST EXPANSION)       -->
             <!-- ================================================================ -->
             <Border Grid.Column="2" Style="{StaticResource CardPanel}" Padding="16,12">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <!-- Row 0: Canvas Header (Mode Indicator + New Record Button) - ~26px -->
+                        <!-- Row 0: Canvas Header (Mode Indicator + Collapse Button + New Record Button) - ~26px -->
                         <RowDefinition Height="Auto" />
                         <!-- Row 1: Ultra-Slim Customer Info Bar (1줄 통합) - ~32px -->
                         <RowDefinition Height="Auto" />
@@ -384,9 +422,17 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- ROW 0: CANVAS HEADER (모드 표시 + 신규 작성 버튼) -->
+                    <!-- ROW 0: CANVAS HEADER (모드 표시 + 목록 접기 토글 + 신규 작성 버튼) -->
                     <DockPanel Grid.Row="0" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Toggle Master List Button (전체화면 작성 모드 토글) -->
+                            <Button x:Name="ToggleCollapseButton" 
+                                    Content="◀ 목록 접기" 
+                                    Click="OnToggleCollapseMasterListClicked" 
+                                    Style="{StaticResource MiniToolButton}" 
+                                    FontSize="10" Padding="6,2" Margin="0,0,8,0" 
+                                    ToolTip="왼쪽 상담 목록을 접어 상담 작성 공간을 전체화면으로 넓힙니다 (단축키: F11)" />
+
                             <TextBlock Text="{Binding EditModeTitle}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <Border Visibility="{Binding IsEditingNew, Converter={StaticResource BoolToVis}}" 
                                     Background="{StaticResource PrimarySoftBrush}" CornerRadius="5" Padding="5,1" Margin="8,0,0,0">
@@ -567,7 +613,7 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <!-- ROW 6: DETAILS TEXTAREA (남은 세로 공간의 70% 이상을 꽉 채우는 광활한 에디터!) -->
+                    <!-- ROW 6: DETAILS TEXTAREA (남은 전체 높이 70%+ 완벽 장악!) -->
                     <TextBox Grid.Row="6" 
                              x:Name="DetailsTextBox"
                              Text="{Binding EditRecord.Details, UpdateSourceTrigger=PropertyChanged}" 
@@ -617,7 +663,7 @@
                 <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <TextBlock Text="단축키: [Ctrl+S] 저장  |  [Ctrl+N] 신규  |  [Ctrl+F] 검색  |  [Ctrl+휠] 글자크기" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                <TextBlock Text="단축키: [Ctrl+S] 저장  |  [Ctrl+N] 신규  |  [Ctrl+F] 검색  |  [F11] 목록접기/펼치기  |  [Ctrl+휠] 글자크기" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
             </StatusBarItem>
         </StatusBar>
     </Grid>
