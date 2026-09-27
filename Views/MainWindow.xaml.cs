@@ -149,7 +149,7 @@ namespace ConsultationLedger.Views
                 string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger");
                 Directory.CreateDirectory(appDataPath);
                 string path = Path.Combine(appDataPath, LayoutSettingsFileName);
-                File.WriteAllText(path, $"{_savedLeftWidth:F0}|{_isMasterCollapsed}");
+                File.WriteAllText(path, $"{_savedLeftWidth:F0}|False");
             }
             catch
             {
@@ -176,10 +176,10 @@ namespace ConsultationLedger.Views
                         }
                     }
 
-                    if (parts.Length > 1 && bool.TryParse(parts[1], out bool isCollapsed) && isCollapsed)
-                    {
-                        ToggleMasterList();
-                    }
+                    // Always start with master list expanded so user immediately sees their records
+                    _isMasterCollapsed = false;
+                    ToggleCollapseButton.Content = "◀ 목록 접기";
+                    ToggleCollapseButton.ToolTip = "왼쪽 상담 목록을 접어 상담 작성 공간을 전체화면으로 넓힙니다 (단축키: F11)";
                 }
             }
             catch
