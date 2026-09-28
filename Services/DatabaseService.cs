@@ -504,5 +504,58 @@ namespace ConsultationLedger.Services
 
             return destPath;
         }
+
+        public static string SaveImageBytesToAppStorage(byte[] bytes, string ext = ".png")
+        {
+            string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger", "Images");
+            Directory.CreateDirectory(appDataPath);
+            if (!ext.StartsWith('.')) ext = "." + ext;
+            string newFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
+            string destPath = Path.Combine(appDataPath, newFileName);
+            File.WriteAllBytes(destPath, bytes);
+            return destPath;
+        }
+
+        public static string? SaveDibStreamToAppStorage(MemoryStream ms)
+        {
+            try
+            {
+                byte[] dibBuffer = ms.ToArray();
+                if (dibBuffer.Length < 40) return null;
+
+                int headerSize = BitConverter.ToInt32(dibBuffer, 0);
+                short bitCount = BitConverter.ToInt16(dibBuffer, 14);
+                int clrUsed = BitConverter.ToInt32(dibBuffer, 32);
+
+                int paletteSize = 0;
+                if (bitCount <= 8)
+                {
+                    paletteSize = (clrUsed == 0 ? (1 << bitCount) : clrUsed) * 4;
+                }
+
+                int fileHeaderSize = 14;
+                int offBits = fileHeaderSize + headerSize + paletteSize;
+                int totalFileSize = fileHeaderSize + dibBuffer.Length;
+
+                byte[] bmpBuffer = new byte[totalFileSize];
+                bmpBuffer[0] = (byte)'B';
+                bmpBuffer[1] = (byte)'M';
+                BitConverter.GetBytes(totalFileSize).CopyTo(bmpBuffer, 2);
+                BitConverter.GetBytes(offBits).CopyTo(bmpBuffer, 10);
+                Array.Copy(dibBuffer, 0, bmpBuffer, fileHeaderSize, dibBuffer.Length);
+
+                using var bmpStream = new MemoryStream(bmpBuffer);
+                var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(bmpStream, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                if (decoder.Frames.Count > 0)
+                {
+                    return SaveBitmapSourceToAppStorage(decoder.Frames[0]);
+                }
+            }
+            catch
+            {
+                // Fallback gracefully
+            }
+            return null;
+        }
     }
 }

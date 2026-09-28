@@ -279,35 +279,61 @@ namespace ConsultationLedger.Views
             }
         }
 
-        private void OnWindowDrop(object sender, DragEventArgs e)
+        private void OnWindowPreviewDragEnter(object sender, DragEventArgs e)
         {
-            try
+            if (MainViewModel.ContainsDroppableImages(e.Data))
             {
-                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effects = DragDropEffects.Copy;
+                if (DataContext is MainViewModel vm)
                 {
-                    string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
-                    if (files != null && files.Length > 0 && DataContext is MainViewModel vm)
-                    {
-                        vm.AddImageFiles(files);
-                    }
+                    vm.IsDragOverActive = true;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"파일 추가 중 오류가 발생했습니다: {ex.Message}", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
+                e.Handled = true;
             }
         }
 
-        private void OnWindowDragOver(object sender, DragEventArgs e)
+        private void OnWindowPreviewDragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            if (MainViewModel.ContainsDroppableImages(e.Data))
             {
                 e.Effects = DragDropEffects.Copy;
+                if (DataContext is MainViewModel vm && !vm.IsDragOverActive)
+                {
+                    vm.IsDragOverActive = true;
+                }
                 e.Handled = true;
             }
             else
             {
-                e.Effects = DragDropEffects.None;
+                if (DataContext is MainViewModel vm && vm.IsDragOverActive)
+                {
+                    vm.IsDragOverActive = false;
+                }
+            }
+        }
+
+        private void OnWindowPreviewDragLeave(object sender, DragEventArgs e)
+        {
+            var pos = e.GetPosition(this);
+            if (pos.X <= 0 || pos.Y <= 0 || pos.X >= ActualWidth || pos.Y >= ActualHeight)
+            {
+                if (DataContext is MainViewModel vm)
+                {
+                    vm.IsDragOverActive = false;
+                }
+            }
+        }
+
+        private async void OnWindowPreviewDrop(object sender, DragEventArgs e)
+        {
+            if (DataContext is MainViewModel vm)
+            {
+                vm.IsDragOverActive = false;
+                if (MainViewModel.ContainsDroppableImages(e.Data))
+                {
+                    await vm.ProcessDroppedDataAsync(e.Data);
+                    e.Handled = true;
+                }
             }
         }
 

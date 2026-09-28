@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
@@ -245,6 +247,14 @@ namespace ConsultationLedger.ViewModels
                     SaveThumbnailSize();
                 }
             }
+        }
+
+        // Drag & Drop Active Status
+        private bool _isDragOverActive;
+        public bool IsDragOverActive
+        {
+            get => _isDragOverActive;
+            set => SetProperty(ref _isDragOverActive, value);
         }
 
         // Full-screen / Modal Image Viewer Properties
@@ -803,6 +813,148 @@ namespace ConsultationLedger.ViewModels
                 OnPropertyChanged(nameof(AttachedImagesCountText));
                 StatusMessage = $"사진 {addedCount}장이 첨부되었습니다. 📷";
             }
+        }
+
+        public static bool ContainsDroppableImages(IDataObject data)
+        {
+            if (data == null) return false;
+
+            if (data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    string[] supportedExts = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp" };
+                    if (files.Any(f => !string.IsNullOrWhiteSpace(f) && supportedExts.Contains(Path.GetExtension(f).ToLowerInvariant())))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            if (data.GetDataPresent(DataFormats.Bitmap) || 
+                data.GetDataPresent("DeviceIndependentBitmap") || 
+                data.GetDataPresent(DataFormats.Dib) ||
+                data.GetDataPresent("FileContents"))
+            {
+                return true;
+            }
+
+            if (data.GetDataPresent(DataFormats.UnicodeText) || data.GetDataPresent(DataFormats.Text))
+            {
+                string? url = (data.GetData(DataFormats.UnicodeText) ?? data.GetData(DataFormats.Text)) as string;
+                if (!string.IsNullOrWhiteSpace(url) && (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                {
+                    string cleanUrl = url.Split('?')[0];
+                    string ext = Path.GetExtension(cleanUrl).ToLowerInvariant();
+                    string[] supportedExts = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp" };
+                    if (supportedExts.Contains(ext))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public async Task<int> ProcessDroppedDataAsync(IDataObject data)
+        {
+            int addedCount = 0;
+            string[] supportedExts = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp" };
+
+            try
+            {
+                // 1. File Drop (파일 탐색기/바탕화면에서 드래그)
+                if (data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    if (data.GetData(DataFormats.FileDrop) is string[] files)
+                    {
+                        var validFiles = files.Where(f => !string.IsNullOrWhiteSpace(f) && File.Exists(f) && supportedExts.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
+                        if (validFiles.Count > 0)
+                        {
+                            AddImageFiles(validFiles);
+                            return validFiles.Count;
+                        }
+                    }
+                }
+
+                // 2. Direct Bitmap (WPF BitmapSource)
+                if (data.GetDataPresent(DataFormats.Bitmap))
+                {
+                    if (data.GetData(DataFormats.Bitmap) is System.Windows.Media.Imaging.BitmapSource bitmap)
+                    {
+                        string path = DatabaseService.SaveBitmapSourceToAppStorage(bitmap);
+                        AttachedImages.Add(path);
+                        addedCount++;
+                    }
+                }
+
+                // 3. DIB (웹브라우저 Chrome/Edge 등에서 이미지 드래그)
+                if (addedCount == 0 && (data.GetDataPresent("DeviceIndependentBitmap") || data.GetDataPresent(DataFormats.Dib)))
+                {
+                    object? dibObj = data.GetData("DeviceIndependentBitmap") ?? data.GetData(DataFormats.Dib);
+                    if (dibObj is MemoryStream ms)
+                    {
+                        string? path = DatabaseService.SaveDibStreamToAppStorage(ms);
+                        if (!string.IsNullOrWhiteSpace(path))
+                        {
+                            AttachedImages.Add(path);
+                            addedCount++;
+                        }
+                    }
+                }
+
+                // 4. FileContents stream (Outlook/가상 파일 드래그)
+                if (addedCount == 0 && data.GetDataPresent("FileContents"))
+                {
+                    if (data.GetData("FileContents") is MemoryStream fileStream)
+                    {
+                        try
+                        {
+                            var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(fileStream, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                            if (decoder.Frames.Count > 0)
+                            {
+                                string path = DatabaseService.SaveBitmapSourceToAppStorage(decoder.Frames[0]);
+                                AttachedImages.Add(path);
+                                addedCount++;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                // 5. Image URL drop (웹 링크 드래그)
+                if (addedCount == 0 && (data.GetDataPresent(DataFormats.UnicodeText) || data.GetDataPresent(DataFormats.Text)))
+                {
+                    string? url = (data.GetData(DataFormats.UnicodeText) ?? data.GetData(DataFormats.Text)) as string;
+                    if (!string.IsNullOrWhiteSpace(url) && (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        string cleanUrl = url.Split('?')[0];
+                        string ext = Path.GetExtension(cleanUrl).ToLowerInvariant();
+                        if (supportedExts.Contains(ext))
+                        {
+                            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                            byte[] bytes = await client.GetByteArrayAsync(url);
+                            string path = DatabaseService.SaveImageBytesToAppStorage(bytes, ext);
+                            AttachedImages.Add(path);
+                            addedCount++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"드래그 앤 드롭 이미지 처리 중 오류: {ex.Message}", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            if (addedCount > 0)
+            {
+                OnPropertyChanged(nameof(HasAttachedImages));
+                OnPropertyChanged(nameof(AttachedImagesCountText));
+                StatusMessage = $"사진 {addedCount}장이 드래그하여 첨부되었습니다. 📷";
+            }
+
+            return addedCount;
         }
 
         public void PasteImageFromClipboard()
