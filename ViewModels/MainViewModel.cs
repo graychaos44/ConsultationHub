@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -215,6 +216,75 @@ namespace ConsultationLedger.ViewModels
             10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28
         };
 
+        // Image Attachment Properties (그림/사진 첨부 및 크기 조절)
+        private ObservableCollection<string> _attachedImages = new();
+        public ObservableCollection<string> AttachedImages
+        {
+            get => _attachedImages;
+            set
+            {
+                if (SetProperty(ref _attachedImages, value))
+                {
+                    OnPropertyChanged(nameof(HasAttachedImages));
+                    OnPropertyChanged(nameof(AttachedImagesCountText));
+                }
+            }
+        }
+
+        public bool HasAttachedImages => AttachedImages.Count > 0;
+        public string AttachedImagesCountText => $"첨부 사진 ({AttachedImages.Count}장)";
+
+        private double _imageThumbnailSize = 85.0;
+        public double ImageThumbnailSize
+        {
+            get => _imageThumbnailSize;
+            set
+            {
+                if (value >= 50 && value <= 260 && SetProperty(ref _imageThumbnailSize, value))
+                {
+                    SaveThumbnailSize();
+                }
+            }
+        }
+
+        // Full-screen / Modal Image Viewer Properties
+        private bool _isImageViewerOpen;
+        public bool IsImageViewerOpen
+        {
+            get => _isImageViewerOpen;
+            set => SetProperty(ref _isImageViewerOpen, value);
+        }
+
+        private string _viewingImagePath = string.Empty;
+        public string ViewingImagePath
+        {
+            get => _viewingImagePath;
+            set
+            {
+                if (SetProperty(ref _viewingImagePath, value))
+                {
+                    OnPropertyChanged(nameof(ViewingImageFileName));
+                }
+            }
+        }
+
+        public string ViewingImageFileName => string.IsNullOrWhiteSpace(ViewingImagePath) ? "" : Path.GetFileName(ViewingImagePath);
+
+        private double _viewerZoomFactor = 1.0;
+        public double ViewerZoomFactor
+        {
+            get => _viewerZoomFactor;
+            set
+            {
+                if (SetProperty(ref _viewerZoomFactor, value))
+                {
+                    OnPropertyChanged(nameof(ViewerZoomPercentage));
+                }
+            }
+        }
+
+        public string ViewerZoomPercentage => $"{(int)(ViewerZoomFactor * 100)}%";
+
         // Collections for Comboboxes
         public ObservableCollection<string> Categories { get; } = new() { "전체", "일반상담", "법률/행정", "상품문의", "서비스지원", "기타" };
         public ObservableCollection<string> EditCategories { get; } = new() { "일반상담", "법률/행정", "상품문의", "서비스지원", "기타" };
@@ -241,6 +311,17 @@ namespace ConsultationLedger.ViewModels
         public ICommand CopyPhoneCommand { get; }
         public ICommand CopyAddressCommand { get; }
         public ICommand CopyAllSummaryCommand { get; }
+        public ICommand AddImageCommand { get; }
+        public ICommand PasteImageCommand { get; }
+        public ICommand RemoveImageCommand { get; }
+        public ICommand OpenImageViewerCommand { get; }
+        public ICommand CloseImageViewerCommand { get; }
+        public ICommand ZoomInViewerCommand { get; }
+        public ICommand ZoomOutViewerCommand { get; }
+        public ICommand ResetViewerZoomCommand { get; }
+        public ICommand IncreaseThumbnailSizeCommand { get; }
+        public ICommand DecreaseThumbnailSizeCommand { get; }
+        public ICommand ResetThumbnailSizeCommand { get; }
 
         public MainViewModel()
         {
@@ -265,7 +346,21 @@ namespace ConsultationLedger.ViewModels
             CopyAddressCommand = new RelayCommand(CopyAddress);
             CopyAllSummaryCommand = new RelayCommand(CopyAllSummary);
 
+            // Image Commands
+            AddImageCommand = new RelayCommand(AddImagesFromDialog);
+            PasteImageCommand = new RelayCommand(PasteImageFromClipboard);
+            RemoveImageCommand = new RelayCommand<string>(RemoveImage);
+            OpenImageViewerCommand = new RelayCommand<string>(OpenImageViewer);
+            CloseImageViewerCommand = new RelayCommand(CloseImageViewer);
+            ZoomInViewerCommand = new RelayCommand(ZoomInViewer);
+            ZoomOutViewerCommand = new RelayCommand(ZoomOutViewer);
+            ResetViewerZoomCommand = new RelayCommand(ResetViewerZoom);
+            IncreaseThumbnailSizeCommand = new RelayCommand(IncreaseThumbnailSize);
+            DecreaseThumbnailSizeCommand = new RelayCommand(DecreaseThumbnailSize);
+            ResetThumbnailSizeCommand = new RelayCommand(ResetThumbnailSize);
+
             LoadWritingFontSize();
+            LoadThumbnailSize();
             PrepareNewRecord();
             LoadData();
         }
@@ -384,6 +479,9 @@ namespace ConsultationLedger.ViewModels
                 Status = "진행중",
                 Priority = "보통"
             };
+            AttachedImages.Clear();
+            OnPropertyChanged(nameof(HasAttachedImages));
+            OnPropertyChanged(nameof(AttachedImagesCountText));
             IsEditingNew = true;
             SelectedRecord = null;
             HasExistingCustomerMatch = false;
@@ -406,9 +504,26 @@ namespace ConsultationLedger.ViewModels
                 Details = record.Details,
                 FollowUpDate = record.FollowUpDate,
                 Tags = record.Tags,
+                ImagePaths = record.ImagePaths,
                 CreatedAt = record.CreatedAt,
                 UpdatedAt = record.UpdatedAt
             };
+
+            AttachedImages.Clear();
+            if (!string.IsNullOrWhiteSpace(record.ImagePaths))
+            {
+                var paths = record.ImagePaths.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var p in paths)
+                {
+                    if (File.Exists(p))
+                    {
+                        AttachedImages.Add(p);
+                    }
+                }
+            }
+            OnPropertyChanged(nameof(HasAttachedImages));
+            OnPropertyChanged(nameof(AttachedImagesCountText));
+
             IsEditingNew = false;
             HasExistingCustomerMatch = false;
             string targetTitle = !string.IsNullOrWhiteSpace(record.ClientName) ? record.ClientName : (!string.IsNullOrWhiteSpace(record.ClientPhone) ? record.ClientPhone : record.Address);
@@ -440,6 +555,9 @@ namespace ConsultationLedger.ViewModels
                 MessageBox.Show("상담 요약을 입력해 주세요. (필수 항목)", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            // Save attached images
+            EditRecord.ImagePaths = string.Join(";", AttachedImages);
 
             string clientIdentifier = !string.IsNullOrWhiteSpace(EditRecord.ClientName)
                 ? $"'{EditRecord.ClientName}' 님"
@@ -631,6 +749,213 @@ namespace ConsultationLedger.ViewModels
                 string path = GetFontSizeSettingsPath();
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllText(path, WritingFontSize.ToString());
+            }
+            catch
+            {
+                // Silently fallback
+            }
+        }
+
+        private void AddImagesFromDialog()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "첨부할 이미지 선택 (다중 선택 가능)",
+                Filter = "이미지 파일 (*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp)|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp|모든 파일 (*.*)|*.*",
+                Multiselect = true
+            };
+
+            if (dlg.ShowDialog() == true && dlg.FileNames != null && dlg.FileNames.Length > 0)
+            {
+                AddImageFiles(dlg.FileNames);
+            }
+        }
+
+        public void AddImageFiles(IEnumerable<string> filePaths)
+        {
+            int addedCount = 0;
+            string[] supportedExts = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp" };
+
+            foreach (var file in filePaths)
+            {
+                if (File.Exists(file))
+                {
+                    string ext = Path.GetExtension(file).ToLowerInvariant();
+                    if (supportedExts.Contains(ext))
+                    {
+                        try
+                        {
+                            string storedPath = DatabaseService.SaveImageToAppStorage(file);
+                            AttachedImages.Add(storedPath);
+                            addedCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"이미지 저장 중 오류가 발생했습니다: {Path.GetFileName(file)}\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    }
+                }
+            }
+
+            if (addedCount > 0)
+            {
+                OnPropertyChanged(nameof(HasAttachedImages));
+                OnPropertyChanged(nameof(AttachedImagesCountText));
+                StatusMessage = $"사진 {addedCount}장이 첨부되었습니다. 📷";
+            }
+        }
+
+        public void PasteImageFromClipboard()
+        {
+            try
+            {
+                if (Clipboard.ContainsImage())
+                {
+                    var bitmap = Clipboard.GetImage();
+                    if (bitmap != null)
+                    {
+                        string storedPath = DatabaseService.SaveBitmapSourceToAppStorage(bitmap);
+                        AttachedImages.Add(storedPath);
+                        OnPropertyChanged(nameof(HasAttachedImages));
+                        OnPropertyChanged(nameof(AttachedImagesCountText));
+                        StatusMessage = "클립보드에서 이미지가 붙여넣기 되었습니다. 📋📷";
+                        return;
+                    }
+                }
+
+                if (Clipboard.ContainsFileDropList())
+                {
+                    var files = Clipboard.GetFileDropList();
+                    if (files != null && files.Count > 0)
+                    {
+                        var fileList = new List<string>();
+                        foreach (string? f in files)
+                        {
+                            if (!string.IsNullOrWhiteSpace(f)) fileList.Add(f);
+                        }
+                        AddImageFiles(fileList);
+                        return;
+                    }
+                }
+
+                StatusMessage = "클립보드에 붙여넣을 수 있는 이미지나 이미지 파일이 없습니다.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"클립보드 이미지 가져오기 실패: {ex.Message}", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void RemoveImage(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            if (AttachedImages.Contains(path))
+            {
+                AttachedImages.Remove(path);
+                OnPropertyChanged(nameof(HasAttachedImages));
+                OnPropertyChanged(nameof(AttachedImagesCountText));
+                StatusMessage = "첨부 사진이 목록에서 제거되었습니다.";
+                if (IsImageViewerOpen && ViewingImagePath == path)
+                {
+                    CloseImageViewer();
+                }
+            }
+        }
+
+        private void OpenImageViewer(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            ViewingImagePath = path;
+            ViewerZoomFactor = 1.0;
+            IsImageViewerOpen = true;
+        }
+
+        private void CloseImageViewer()
+        {
+            IsImageViewerOpen = false;
+            ViewingImagePath = string.Empty;
+        }
+
+        private void ZoomInViewer()
+        {
+            if (ViewerZoomFactor < 4.0)
+            {
+                ViewerZoomFactor = Math.Round(ViewerZoomFactor + 0.25, 2);
+            }
+        }
+
+        private void ZoomOutViewer()
+        {
+            if (ViewerZoomFactor > 0.3)
+            {
+                ViewerZoomFactor = Math.Round(ViewerZoomFactor - 0.25, 2);
+            }
+        }
+
+        private void ResetViewerZoom()
+        {
+            ViewerZoomFactor = 1.0;
+        }
+
+        private void IncreaseThumbnailSize()
+        {
+            if (ImageThumbnailSize <= 240)
+            {
+                ImageThumbnailSize += 20;
+                StatusMessage = $"사진 썸네일 크기: {(int)ImageThumbnailSize}px";
+            }
+        }
+
+        private void DecreaseThumbnailSize()
+        {
+            if (ImageThumbnailSize >= 70)
+            {
+                ImageThumbnailSize -= 20;
+                StatusMessage = $"사진 썸네일 크기: {(int)ImageThumbnailSize}px";
+            }
+        }
+
+        private void ResetThumbnailSize()
+        {
+            ImageThumbnailSize = 85.0;
+            StatusMessage = "사진 썸네일 크기가 기본값(85px)으로 재설정되었습니다.";
+        }
+
+        private string GetThumbnailSizeSettingsPath()
+        {
+            string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger");
+            return Path.Combine(appDataPath, "image_thumb_size.txt");
+        }
+
+        private void LoadThumbnailSize()
+        {
+            try
+            {
+                string path = GetThumbnailSizeSettingsPath();
+                if (File.Exists(path))
+                {
+                    string text = File.ReadAllText(path).Trim();
+                    if (double.TryParse(text, out double size) && size >= 50 && size <= 260)
+                    {
+                        _imageThumbnailSize = size;
+                        OnPropertyChanged(nameof(ImageThumbnailSize));
+                    }
+                }
+            }
+            catch
+            {
+                _imageThumbnailSize = 85.0;
+            }
+        }
+
+        private void SaveThumbnailSize()
+        {
+            try
+            {
+                string path = GetThumbnailSizeSettingsPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, ImageThumbnailSize.ToString());
             }
             catch
             {

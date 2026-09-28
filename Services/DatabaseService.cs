@@ -65,6 +65,17 @@ namespace ConsultationLedger.Services
                 // Column already exists
             }
 
+            // Automatic migration: add ImagePaths column if table exists without it
+            try
+            {
+                using var alterImgCmd = new SqliteCommand("ALTER TABLE Consultations ADD COLUMN ImagePaths TEXT;", connection);
+                alterImgCmd.ExecuteNonQuery();
+            }
+            catch
+            {
+                // Column already exists
+            }
+
             // Check if seeded before
             string checkMetaSql = "SELECT Value FROM AppMeta WHERE Key = 'IsSeeded';";
             using var checkMetaCmd = new SqliteCommand(checkMetaSql, connection);
@@ -134,8 +145,8 @@ namespace ConsultationLedger.Services
         {
             string sql = @"
                 INSERT INTO Consultations 
-                (ConsultationDate, ClientName, ClientPhone, Address, Category, Status, Priority, Summary, Details, FollowUpDate, Tags, CreatedAt, UpdatedAt)
-                VALUES (@ConsultationDate, @ClientName, @ClientPhone, @Address, @Category, @Status, @Priority, @Summary, @Details, @FollowUpDate, @Tags, @CreatedAt, @UpdatedAt);
+                (ConsultationDate, ClientName, ClientPhone, Address, Category, Status, Priority, Summary, Details, FollowUpDate, Tags, ImagePaths, CreatedAt, UpdatedAt)
+                VALUES (@ConsultationDate, @ClientName, @ClientPhone, @Address, @Category, @Status, @Priority, @Summary, @Details, @FollowUpDate, @Tags, @ImagePaths, @CreatedAt, @UpdatedAt);
             ";
 
             using var cmd = new SqliteCommand(sql, connection);
@@ -150,6 +161,7 @@ namespace ConsultationLedger.Services
             cmd.Parameters.AddWithValue("@Details", record.Details ?? "");
             cmd.Parameters.AddWithValue("@FollowUpDate", record.FollowUpDate.HasValue ? record.FollowUpDate.Value.ToString("o") : (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@Tags", record.Tags ?? "");
+            cmd.Parameters.AddWithValue("@ImagePaths", record.ImagePaths ?? "");
             cmd.Parameters.AddWithValue("@CreatedAt", record.CreatedAt.ToString("o"));
             cmd.Parameters.AddWithValue("@UpdatedAt", record.UpdatedAt.ToString("o"));
 
@@ -288,6 +300,7 @@ namespace ConsultationLedger.Services
                     Details = @Details,
                     FollowUpDate = @FollowUpDate,
                     Tags = @Tags,
+                    ImagePaths = @ImagePaths,
                     UpdatedAt = @UpdatedAt
                 WHERE Id = @Id;
             ";
@@ -305,6 +318,7 @@ namespace ConsultationLedger.Services
             cmd.Parameters.AddWithValue("@Details", record.Details ?? "");
             cmd.Parameters.AddWithValue("@FollowUpDate", record.FollowUpDate.HasValue ? record.FollowUpDate.Value.ToString("o") : (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@Tags", record.Tags ?? "");
+            cmd.Parameters.AddWithValue("@ImagePaths", record.ImagePaths ?? "");
             cmd.Parameters.AddWithValue("@UpdatedAt", DateTime.Now.ToString("o"));
 
             cmd.ExecuteNonQuery();
@@ -454,7 +468,41 @@ namespace ConsultationLedger.Services
                 record.FollowUpDate = DateTime.Parse(reader.GetString(followUpIndex));
             }
 
+            int imagePathsIndex = -1;
+            try { imagePathsIndex = reader.GetOrdinal("ImagePaths"); } catch { }
+            if (imagePathsIndex >= 0 && !reader.IsDBNull(imagePathsIndex))
+            {
+                record.ImagePaths = reader.GetString(imagePathsIndex);
+            }
+
             return record;
+        }
+
+        public static string SaveImageToAppStorage(string sourceFilePath)
+        {
+            string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger", "Images");
+            Directory.CreateDirectory(appDataPath);
+            string ext = Path.GetExtension(sourceFilePath).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) ext = ".png";
+            string newFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
+            string destPath = Path.Combine(appDataPath, newFileName);
+            File.Copy(sourceFilePath, destPath, true);
+            return destPath;
+        }
+
+        public static string SaveBitmapSourceToAppStorage(System.Windows.Media.Imaging.BitmapSource bitmap)
+        {
+            string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ConsultationLedger", "Images");
+            Directory.CreateDirectory(appDataPath);
+            string newFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}.png";
+            string destPath = Path.Combine(appDataPath, newFileName);
+
+            using var fileStream = new FileStream(destPath, FileMode.Create);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+            encoder.Save(fileStream);
+
+            return destPath;
         }
     }
 }

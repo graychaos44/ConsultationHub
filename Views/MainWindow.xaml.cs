@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -44,6 +45,55 @@ namespace ConsultationLedger.Views
 
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Escape: Close Fullscreen Image Viewer if open
+            if (e.Key == Key.Escape)
+            {
+                if (DataContext is MainViewModel vm && vm.IsImageViewerOpen)
+                {
+                    vm.CloseImageViewerCommand.Execute(null);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // Ctrl + V: Paste Image from Clipboard if image exists
+            if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                if (Clipboard.ContainsImage())
+                {
+                    if (DataContext is MainViewModel vm)
+                    {
+                        vm.PasteImageFromClipboard();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                else if (Clipboard.ContainsFileDropList())
+                {
+                    var dropList = Clipboard.GetFileDropList();
+                    string[] supportedExts = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp" };
+                    bool hasImageFiles = false;
+                    if (dropList != null)
+                    {
+                        foreach (string? f in dropList)
+                        {
+                            if (!string.IsNullOrWhiteSpace(f) && supportedExts.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                            {
+                                hasImageFiles = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hasImageFiles && DataContext is MainViewModel vm)
+                    {
+                        vm.PasteImageFromClipboard();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+
             // Ctrl + F: Focus Search Box
             if (e.Key == Key.F && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
@@ -226,6 +276,54 @@ namespace ConsultationLedger.Views
                     }
                     e.Handled = true;
                 }
+            }
+        }
+
+        private void OnWindowDrop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                    if (files != null && files.Length > 0 && DataContext is MainViewModel vm)
+                    {
+                        vm.AddImageFiles(files);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"파일 추가 중 오류가 발생했습니다: {ex.Message}", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void OnWindowDragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void OnImageViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (DataContext is MainViewModel vm && vm.IsImageViewerOpen)
+            {
+                if (e.Delta > 0)
+                {
+                    vm.ZoomInViewerCommand.Execute(null);
+                }
+                else if (e.Delta < 0)
+                {
+                    vm.ZoomOutViewerCommand.Execute(null);
+                }
+                e.Handled = true;
             }
         }
     }

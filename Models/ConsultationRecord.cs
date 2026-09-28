@@ -18,10 +18,13 @@ namespace ConsultationLedger.Models
         public string Details { get; set; } = string.Empty;
         public DateTime? FollowUpDate { get; set; }
         public string Tags { get; set; } = string.Empty;
+        public string ImagePaths { get; set; } = string.Empty; // 세미콜론(;) 구분 파일 경로들
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         // Computed Helper Properties for UI display
+        public bool HasImages => !string.IsNullOrWhiteSpace(ImagePaths);
+        public int ImageCount => string.IsNullOrWhiteSpace(ImagePaths) ? 0 : ImagePaths.Split(';', StringSplitOptions.RemoveEmptyEntries).Length;
         public string DisplayClientName => string.IsNullOrWhiteSpace(ClientName) ? "(미기재)" : ClientName;
         public string FormattedDate => ConsultationDate.ToString("yyyy-MM-dd HH:mm");
         public string ShortDate => ConsultationDate.ToString("MM-dd HH:mm");

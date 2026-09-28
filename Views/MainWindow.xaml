@@ -4,13 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewmodels="clr-namespace:ConsultationLedger.ViewModels"
+        xmlns:converters="clr-namespace:ConsultationLedger.Converters"
         mc:Ignorable="d"
         Title="ConsultationHub - 스마트 고객 상담 관리 장부" 
         Icon="../app_icon.ico"
         Height="890" Width="1440"
         MinHeight="680" MinWidth="1050"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BackgroundBrush}">
+        Background="{StaticResource BackgroundBrush}"
+        AllowDrop="True"
+        Drop="OnWindowDrop"
+        DragOver="OnWindowDragOver">
 
     <Window.DataContext>
         <viewmodels:MainViewModel />
@@ -18,6 +22,7 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmap" />
     </Window.Resources>
 
     <Window.InputBindings>
@@ -346,6 +351,17 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
+                            <!-- Photo Indicator Column -->
+                            <DataGridTemplateColumn Header="📷" Width="30">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="📷" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding HasImages, Converter={StaticResource BoolToVis}}"
+                                                   ToolTip="{Binding ImageCount, StringFormat='첨부 사진 {0}장'}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
                             <!-- Summary -->
                             <DataGridTextColumn Header="상담 요약" Binding="{Binding Summary}" Width="*">
                                 <DataGridTextColumn.ElementStyle>
@@ -418,7 +434,9 @@
                         <RowDefinition Height="Auto" />
                         <!-- Row 6: Details TextArea (남은 전체 높이 70%+ 완벽 장악!) - Height="*" -->
                         <RowDefinition Height="*" />
-                        <!-- Row 7: Bottom Action Bar - ~38px -->
+                        <!-- Row 7: Attached Images Bar & Thumbnail Gallery - Auto -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Row 8: Bottom Action Bar - ~38px -->
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
@@ -630,8 +648,93 @@
                              BorderBrush="{StaticResource BorderBrush}"
                              BorderThickness="1" />
 
-                    <!-- ROW 7: BOTTOM ACTION BAR (단정하고 깔끔한 액션 툴바) -->
-                    <Grid Grid.Row="7">
+                    <!-- ROW 7: ATTACHED IMAGES & THUMBNAIL GALLERY (그림/사진 첨부 및 크기 조절) -->
+                    <Border Grid.Row="7" Margin="0,0,0,8" Padding="10,6" Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel>
+                            <!-- Header Toolbar -->
+                            <DockPanel Margin="0,0,0,4">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="📷" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding AttachedImagesCountText}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="(더블클릭: 확대 보기  |  드래그/붙여넣기: 추가)" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <!-- Thumbnail Size Control (Visible when images exist) -->
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                Visibility="{Binding HasAttachedImages, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="썸네일 크기:" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <Button Content="-" Command="{Binding DecreaseThumbnailSizeCommand}" Style="{StaticResource OutlineButton}"
+                                                Padding="4,0" Height="20" MinWidth="18" FontSize="9" Margin="0,0,2,0" ToolTip="썸네일 축소" />
+                                        <Slider Minimum="50" Maximum="240" Value="{Binding ImageThumbnailSize}" Width="75" VerticalAlignment="Center"
+                                                SmallChange="10" LargeChange="20" ToolTip="썸네일 크기 직접 조절" Margin="2,0,2,0" />
+                                        <Button Content="+" Command="{Binding IncreaseThumbnailSizeCommand}" Style="{StaticResource OutlineButton}"
+                                                Padding="4,0" Height="20" MinWidth="18" FontSize="9" Margin="0,0,2,0" ToolTip="썸네일 확대" />
+                                        <Button Content="기본" Command="{Binding ResetThumbnailSizeCommand}" Style="{StaticResource OutlineButton}"
+                                                Padding="4,0" Height="20" FontSize="9" Margin="0,0,6,0" ToolTip="기본 크기(85px)로 재설정" />
+                                    </StackPanel>
+
+                                    <!-- Add Image Button -->
+                                    <Button Content="+ 사진 추가" Command="{Binding AddImageCommand}" Style="{StaticResource OutlineButton}" 
+                                            FontSize="10" Padding="8,2" Height="22" Margin="0,0,4,0" ToolTip="이미지 파일 선택 (JPG, PNG, BMP, GIF, WEBP 등 다중 선택 가능)" />
+
+                                    <!-- Paste Image Button -->
+                                    <Button Content="📋 붙여넣기" Command="{Binding PasteImageCommand}" Style="{StaticResource OutlineButton}" 
+                                            FontSize="10" Padding="8,2" Height="22" ToolTip="클립보드에 복사된 캡처화면이나 이미지 붙여넣기 (Ctrl + V)" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <!-- Horizontal Gallery ScrollViewer -->
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                          Visibility="{Binding HasAttachedImages, Converter={StaticResource BoolToVis}}"
+                                          MaxHeight="260" Margin="0,2,0,2">
+                                <ItemsControl ItemsSource="{Binding AttachedImages}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,8,0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6"
+                                                    Width="{Binding DataContext.ImageThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Height="{Binding DataContext.ImageThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    ClipToBounds="True" Cursor="Hand" ToolTip="더블 클릭하여 큰 화면으로 확대 보기">
+                                                <Border.InputBindings>
+                                                    <MouseBinding MouseAction="LeftDoubleClick" 
+                                                                  Command="{Binding DataContext.OpenImageViewerCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                                  CommandParameter="{Binding}" />
+                                                </Border.InputBindings>
+                                                <Grid>
+                                                    <Image Source="{Binding Converter={StaticResource ImagePathToBitmap}, ConverterParameter=300}" 
+                                                           Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    
+                                                    <!-- Top overlay bar for buttons -->
+                                                    <Border VerticalAlignment="Top" Height="24" Background="#77000000">
+                                                        <DockPanel Margin="3,2,3,0">
+                                                            <Button DockPanel.Dock="Left" Content="🔍" 
+                                                                    Command="{Binding DataContext.OpenImageViewerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Width="20" Height="20" Padding="0" FontSize="9" Background="#55FFFFFF" Foreground="White" BorderThickness="0"
+                                                                    Cursor="Hand" ToolTip="사진 크게 보기 (더블클릭 가능)" />
+                                                            <Button DockPanel.Dock="Right" Content="✕" 
+                                                                    Command="{Binding DataContext.RemoveImageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Width="20" Height="20" Padding="0" FontSize="11" FontWeight="Bold" Background="#D0EF4444" Foreground="White" BorderThickness="0"
+                                                                    Cursor="Hand" ToolTip="사진 첨부 취소" />
+                                                        </DockPanel>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ROW 8: BOTTOM ACTION BAR (단정하고 깔끔한 액션 툴바) -->
+                    <Grid Grid.Row="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -667,5 +770,81 @@
                 <TextBlock Text="단축키: [Ctrl+S] 저장  |  [Ctrl+N] 신규  |  [Ctrl+F] 검색  |  [F11] 목록접기/펼치기  |  [Ctrl+휠] 글자크기" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
             </StatusBarItem>
         </StatusBar>
+
+        <!-- ============================================================== -->
+        <!-- FULL-SCREEN MODAL IMAGE VIEWER OVERLAY                         -->
+        <!-- ============================================================== -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Background="#E60F172A"
+              Visibility="{Binding IsImageViewerOpen, Converter={StaticResource BoolToVis}}"
+              PreviewMouseWheel="OnImageViewerPreviewMouseWheel">
+            <Grid Margin="24">
+                <Grid.RowDefinitions>
+                    <!-- Top Controls Toolbar -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Centered Zoomable Image Area -->
+                    <RowDefinition Height="*" />
+                    <!-- Bottom Helper Note -->
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Top Controls Toolbar -->
+                <Border Grid.Row="0" Background="#F21E293B" CornerRadius="8" Padding="16,10" Margin="0,0,0,12">
+                    <DockPanel>
+                        <!-- Title & File Name -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="📷 사진 상세 확대 보기" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ViewingImageFileName}" FontSize="12" Foreground="#94A3B8" Margin="14,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Zoom Controls & Close Button -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="확대 비율:" FontSize="12" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            
+                            <Button Content="-" Command="{Binding ZoomOutViewerCommand}" 
+                                    Style="{StaticResource OutlineButton}" Foreground="White" BorderBrush="#64748B" Background="#334155"
+                                    Width="28" Height="26" FontSize="13" FontWeight="Bold" ToolTip="축소 (마우스 휠 아래)" Margin="0,0,4,0" />
+                            
+                            <Border Background="#0F172A" CornerRadius="4" Padding="10,3" VerticalAlignment="Center" Margin="0,0,4,0">
+                                <TextBlock Text="{Binding ViewerZoomPercentage}" FontSize="12" FontWeight="SemiBold" Foreground="#38BDF8" Width="44" TextAlignment="Center" />
+                            </Border>
+                            
+                            <Button Content="+" Command="{Binding ZoomInViewerCommand}" 
+                                    Style="{StaticResource OutlineButton}" Foreground="White" BorderBrush="#64748B" Background="#334155"
+                                    Width="28" Height="26" FontSize="13" FontWeight="Bold" ToolTip="확대 (마우스 휠 위)" Margin="0,0,4,0" />
+                            
+                            <Button Content="100% 원본" Command="{Binding ResetViewerZoomCommand}" 
+                                    Style="{StaticResource OutlineButton}" Foreground="White" BorderBrush="#64748B" Background="#334155"
+                                    Padding="10,0" Height="26" FontSize="11" ToolTip="기본 100% 크기로 재설정" Margin="0,0,16,0" />
+
+                            <!-- Close Button -->
+                            <Button Content="✕ 닫기 (ESC)" Command="{Binding CloseImageViewerCommand}" 
+                                    Style="{StaticResource DangerButton}" Padding="16,4" Height="28" FontSize="12" FontWeight="Bold"
+                                    ToolTip="뷰어 닫기 (ESC 키)" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Zoomable Image Viewport with ScrollViewer -->
+                <Border Grid.Row="1" Background="#090D16" CornerRadius="8" ClipToBounds="True" BorderBrush="#334155" BorderThickness="1">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="16">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image Source="{Binding ViewingImagePath, Converter={StaticResource ImagePathToBitmap}}" 
+                                   RenderTransformOrigin="0.5,0.5">
+                                <Image.LayoutTransform>
+                                    <ScaleTransform ScaleX="{Binding ViewerZoomFactor}" ScaleY="{Binding ViewerZoomFactor}" />
+                                </Image.LayoutTransform>
+                            </Image>
+                        </Grid>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Bottom Guidance Bar -->
+                <Border Grid.Row="2" Margin="0,10,0,0">
+                    <TextBlock Text="💡 마우스 휠을 굴려 확대/축소할 수 있으며, ESC 키 또는 우측 상단 [✕ 닫기] 버튼을 누르면 이전 화면으로 돌아갑니다." 
+                               FontSize="11" Foreground="#94A3B8" HorizontalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>
