@@ -613,7 +613,7 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <!-- ROW 6: DETAILS TEXTAREA (남은 전체 높이 70%+ 완벽 장악!) -->
+                    <!-- ROW 6: DETAILS TEXTAREA (상단부터 타이핑 시작하도록 VerticalContentAlignment=Top 설정) -->
                     <TextBox Grid.Row="6" 
                              x:Name="DetailsTextBox"
                              Text="{Binding EditRecord.Details, UpdateSourceTrigger=PropertyChanged}" 
@@ -621,6 +621,7 @@
                              PreviewMouseWheel="OnWritingTextBoxPreviewMouseWheel"
                              TextWrapping="Wrap" 
                              AcceptsReturn="True" 
+                             VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto" 
                              HorizontalScrollBarVisibility="Disabled"
                              Padding="12,10"

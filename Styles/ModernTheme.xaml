@@ -212,7 +212,9 @@
                             CornerRadius="6"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" 
+                                      HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}" 
+                                      VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -222,10 +224,26 @@
                             <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
                             <Setter Property="Background" Value="White" />
                         </Trigger>
+                        <Trigger Property="AcceptsReturn" Value="True">
+                            <Setter Property="VerticalContentAlignment" Value="Top" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="AcceptsReturn" Value="True">
+                <Setter Property="VerticalContentAlignment" Value="Top" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Dedicated MultiLine TextBox Style -->
+    <Style x:Key="MultiLineTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
     </Style>
 
     <!-- Modern Section Header -->
