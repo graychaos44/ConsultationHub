@@ -343,9 +343,9 @@ namespace ConsultationLedger.Services
             string cleanAddress = (address ?? "").Trim();
             string cleanName = (name ?? "").Trim();
 
-            // Match requires at least 4 digits of phone, or at least 4 chars of address, or at least 2 chars of name
+            // Match requires at least 4 digits of phone, or at least 2 chars of address, or at least 2 chars of name
             bool hasValidPhone = cleanPhone.Length >= 4;
-            bool hasValidAddress = cleanAddress.Length >= 4;
+            bool hasValidAddress = cleanAddress.Length >= 2;
             bool hasValidName = cleanName.Length >= 2;
 
             if (!hasValidPhone && !hasValidAddress && !hasValidName)

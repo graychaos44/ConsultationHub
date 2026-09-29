@@ -26,6 +26,7 @@ namespace ConsultationLedger.Models
         public bool HasImages => !string.IsNullOrWhiteSpace(ImagePaths);
         public int ImageCount => string.IsNullOrWhiteSpace(ImagePaths) ? 0 : ImagePaths.Split(';', StringSplitOptions.RemoveEmptyEntries).Length;
         public string DisplayClientName => string.IsNullOrWhiteSpace(ClientName) ? "(미기재)" : ClientName;
+        public string DisplayAddress => string.IsNullOrWhiteSpace(Address) ? "(주소 미기재)" : Address;
         public string FormattedDate => ConsultationDate.ToString("yyyy-MM-dd HH:mm");
         public string ShortDate => ConsultationDate.ToString("MM-dd HH:mm");
         public string FormattedFollowUp => FollowUpDate.HasValue ? FollowUpDate.Value.ToString("yyyy-MM-dd") : "-";

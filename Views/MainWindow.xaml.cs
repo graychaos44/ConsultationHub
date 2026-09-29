@@ -12,7 +12,7 @@ namespace ConsultationLedger.Views
     public partial class MainWindow : Window
     {
         private const string LayoutSettingsFileName = "layout_settings.txt";
-        private const double DefaultLeftWidth = 430.0;
+        private const double DefaultLeftWidth = 520.0;
         private double _savedLeftWidth = DefaultLeftWidth;
         private bool _isMasterCollapsed = false;
 

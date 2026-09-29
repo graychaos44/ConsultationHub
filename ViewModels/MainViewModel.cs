@@ -388,10 +388,13 @@ namespace ConsultationLedger.ViewModels
             {
                 MatchedRecord = matches.First();
                 HasExistingCustomerMatch = true;
-                string customerLabel = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName)
-                    ? $"'{MatchedRecord.ClientName}' 님"
-                    : $"연락처 '{MatchedRecord.ClientPhone}'";
-                ExistingMatchMessage = $"💡 일치 안내: {customerLabel}과 일치하는 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
+
+                string addressPart = !string.IsNullOrWhiteSpace(MatchedRecord.Address) ? $"[🏠 {MatchedRecord.Address}] " : "";
+                string namePart = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : "";
+                string phonePart = !string.IsNullOrWhiteSpace(MatchedRecord.ClientPhone) ? $" ({MatchedRecord.ClientPhone})" : "";
+                string fullLabel = $"{addressPart}{namePart}{phonePart}".Trim();
+
+                ExistingMatchMessage = $"💡 기존 데이터 발견: {fullLabel} 관련 이전 상담 {matches.Count}건 보관 중 (최근: {MatchedRecord.FormattedDate})";
             }
             else
             {
@@ -413,18 +416,21 @@ namespace ConsultationLedger.ViewModels
             EditRecord = null!;
             EditRecord = temp;
 
-            string label = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'";
-            StatusMessage = $"{label}의 기존 인적사항이 자동 완성되었습니다.";
+            string label = !string.IsNullOrWhiteSpace(MatchedRecord.Address)
+                ? $"주소 '{MatchedRecord.Address}' ({MatchedRecord.DisplayClientName})"
+                : (!string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'");
+            StatusMessage = $"{label}의 기존 데이터가 자동 완성되었습니다.";
         }
 
         private void FilterHistoryForMatchedCustomer()
         {
             if (MatchedRecord == null) return;
-            SearchText = !string.IsNullOrWhiteSpace(MatchedRecord.ClientPhone)
-                ? MatchedRecord.ClientPhone
-                : (!string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? MatchedRecord.ClientName : MatchedRecord.Address);
+            // Prioritize Address for search filter
+            SearchText = !string.IsNullOrWhiteSpace(MatchedRecord.Address)
+                ? MatchedRecord.Address
+                : (!string.IsNullOrWhiteSpace(MatchedRecord.ClientPhone) ? MatchedRecord.ClientPhone : MatchedRecord.ClientName);
             PerformSearch();
-            string label = !string.IsNullOrWhiteSpace(MatchedRecord.ClientName) ? $"'{MatchedRecord.ClientName}' 님" : $"연락처 '{MatchedRecord.ClientPhone}'";
+            string label = !string.IsNullOrWhiteSpace(MatchedRecord.Address) ? $"주소 '{MatchedRecord.Address}'" : MatchedRecord.DisplayClientName;
             StatusMessage = $"{label}의 이전 상담 이력을 조회했습니다.";
         }
 
@@ -536,7 +542,9 @@ namespace ConsultationLedger.ViewModels
 
             IsEditingNew = false;
             HasExistingCustomerMatch = false;
-            string targetTitle = !string.IsNullOrWhiteSpace(record.ClientName) ? record.ClientName : (!string.IsNullOrWhiteSpace(record.ClientPhone) ? record.ClientPhone : record.Address);
+            string targetTitle = !string.IsNullOrWhiteSpace(record.Address) 
+                ? record.Address 
+                : (!string.IsNullOrWhiteSpace(record.ClientName) ? record.ClientName : record.ClientPhone);
             StatusMessage = $"상담 기록 #{record.Id} ({targetTitle}) 수정 모드";
         }
 
@@ -569,9 +577,9 @@ namespace ConsultationLedger.ViewModels
             // Save attached images
             EditRecord.ImagePaths = string.Join(";", AttachedImages);
 
-            string clientIdentifier = !string.IsNullOrWhiteSpace(EditRecord.ClientName)
-                ? $"'{EditRecord.ClientName}' 님"
-                : $"연락처 '{EditRecord.ClientPhone}'";
+            string clientIdentifier = !string.IsNullOrWhiteSpace(EditRecord.Address)
+                ? $"주소 '{EditRecord.Address}' ({EditRecord.DisplayClientName})"
+                : (!string.IsNullOrWhiteSpace(EditRecord.ClientName) ? $"'{EditRecord.ClientName}' 님" : $"연락처 '{EditRecord.ClientPhone}'");
 
             if (IsEditingNew)
             {

@@ -122,7 +122,7 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <!-- Left: Master Consultation List & Smart Filter (드래그 조절 가능) -->
-                <ColumnDefinition x:Name="LeftColumn" Width="430" MinWidth="220" MaxWidth="850" />
+                <ColumnDefinition x:Name="LeftColumn" Width="520" MinWidth="220" MaxWidth="850" />
                 <!-- Center: Interactive GridSplitter Column (마우스 드래그 구분선) -->
                 <ColumnDefinition x:Name="SplitterColumn" Width="10" />
                 <!-- Right: Consultation Detail & Smart Editor (Flex *, 광활한 작성 공간) -->
@@ -155,7 +155,25 @@
                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                  Padding="28,6,6,6" 
                                  FontSize="12" 
-                                 ToolTip="단축키: Ctrl + F (고객명, 연락처, 주소, 내용, 태그 통합 검색)" />
+                                 ToolTip="단축키: Ctrl + F (주소, 고객명, 연락처, 내용 등 통합 검색)" />
+                        <!-- Watermark Placeholder when SearchText is empty -->
+                        <TextBlock Text="주소(동/호수/건물명), 고객명, 연락처 검색..." 
+                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}" 
+                                   VerticalAlignment="Center" Margin="28,0,0,0" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SearchText}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SearchText}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <!-- Magnifier Icon Overlay -->
                         <TextBlock Text="🔍" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" 
                                    HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False" />
@@ -308,7 +326,7 @@
                             </DataGridTextColumn>
 
                             <!-- Modern Status Pill Badge -->
-                            <DataGridTemplateColumn Header="상태" Width="60">
+                            <DataGridTemplateColumn Header="상태" Width="55">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="{Binding StatusBgColor}" CornerRadius="10" Padding="5,2" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -318,11 +336,25 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <!-- Customer Name -->
-                            <DataGridTextColumn Header="고객명" Binding="{Binding DisplayClientName}" Width="70">
+                            <!-- Address Column (가장 중요한 주소를 최우선 전면 배치) -->
+                            <DataGridTextColumn Header="주소 (소재지/배송지)" Binding="{Binding DisplayAddress}" Width="160">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="Foreground" Value="{StaticResource PrimaryDarkBrush}" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="FontSize" Value="11" />
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                        <Setter Property="ToolTip" Value="{Binding Address}" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Customer Name -->
+                            <DataGridTextColumn Header="고객명" Binding="{Binding DisplayClientName}" Width="65">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
                                         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
                                         <Setter Property="FontSize" Value="11" />
@@ -332,7 +364,7 @@
                             </DataGridTextColumn>
 
                             <!-- Phone -->
-                            <DataGridTextColumn Header="연락처" Binding="{Binding ClientPhone}" Width="100">
+                            <DataGridTextColumn Header="연락처" Binding="{Binding ClientPhone}" Width="95">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
@@ -344,7 +376,7 @@
                             </DataGridTextColumn>
 
                             <!-- Date (MM-dd HH:mm) -->
-                            <DataGridTextColumn Header="일시" Binding="{Binding ShortDate}" Width="76">
+                            <DataGridTextColumn Header="일시" Binding="{Binding ShortDate}" Width="68">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
@@ -488,16 +520,36 @@
                     <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8,5" Margin="0,0,0,6">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <!-- Phone* -->
-                                <ColumnDefinition Width="200" />
-                                <!-- Name -->
-                                <ColumnDefinition Width="150" />
-                                <!-- Address* -->
+                                <!-- Address* (가장 중요한 주소를 맨 앞 첫 번째, 가장 넓은 영역에 배치) -->
                                 <ColumnDefinition Width="*" />
+                                <!-- Name -->
+                                <ColumnDefinition Width="135" />
+                                <!-- Phone* -->
+                                <ColumnDefinition Width="195" />
                             </Grid.ColumnDefinitions>
 
-                            <!-- Phone Field with Copy -->
+                            <!-- Address Field with Copy (맨 앞 1번째 배치) -->
                             <DockPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="🏠 주소*" FontSize="11" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <Button DockPanel.Dock="Right" Content="📋" Command="{Binding CopyAddressCommand}" Style="{StaticResource MiniToolButton}" 
+                                        Width="24" Height="24" Padding="0" Margin="3,0,0,0" ToolTip="주소 복사" />
+                                <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" 
+                                         TextChanged="OnCustomerInfoInputChanged" 
+                                         FontWeight="Bold" FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center"
+                                         ToolTip="고객 주소 (소재지/배송지/건물명/호수 등) - 필수" />
+                            </DockPanel>
+
+                            <!-- Customer Name (2번째 배치) -->
+                            <DockPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="고객명" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" 
+                                         TextChanged="OnCustomerInfoInputChanged" 
+                                         FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center"
+                                         ToolTip="고객 성함 (선택)" />
+                            </DockPanel>
+
+                            <!-- Phone Field with Copy (3번째 배치) -->
+                            <DockPanel Grid.Column="2">
                                 <TextBlock Text="연락처*" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
                                 <Button DockPanel.Dock="Right" Content="📋" Command="{Binding CopyPhoneCommand}" Style="{StaticResource MiniToolButton}" 
                                         Width="24" Height="24" Padding="0" Margin="3,0,0,0" ToolTip="연락처 복사" />
@@ -505,25 +557,8 @@
                                          Text="{Binding EditRecord.ClientPhone, UpdateSourceTrigger=PropertyChanged}" 
                                          TextChanged="OnCustomerInfoInputChanged" 
                                          LostFocus="OnPhoneTextBoxLostFocus"
-                                         FontWeight="Bold" FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center" />
-                            </DockPanel>
-
-                            <!-- Customer Name -->
-                            <DockPanel Grid.Column="1" Margin="0,0,8,0">
-                                <TextBlock Text="고객명" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <TextBox Text="{Binding EditRecord.ClientName, UpdateSourceTrigger=PropertyChanged}" 
-                                         TextChanged="OnCustomerInfoInputChanged" 
-                                         FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center" />
-                            </DockPanel>
-
-                            <!-- Address with Copy -->
-                            <DockPanel Grid.Column="2">
-                                <TextBlock Text="주소*" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <Button DockPanel.Dock="Right" Content="📋" Command="{Binding CopyAddressCommand}" Style="{StaticResource MiniToolButton}" 
-                                        Width="24" Height="24" Padding="0" Margin="3,0,0,0" ToolTip="주소 복사" />
-                                <TextBox Text="{Binding EditRecord.Address, UpdateSourceTrigger=PropertyChanged}" 
-                                         TextChanged="OnCustomerInfoInputChanged" 
-                                         FontWeight="Bold" FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center" />
+                                         FontWeight="Bold" FontSize="12" Padding="6,3" Height="26" VerticalContentAlignment="Center"
+                                         ToolTip="고객 전화번호 (숫자 입력 시 자동 하이픈)" />
                             </DockPanel>
                         </Grid>
                     </Border>
